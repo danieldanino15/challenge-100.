@@ -73,6 +73,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:18px}
 .pc{background:var(--card);border-radius:18px;padding:18px}
 .pc h3{margin:0 0 12px;font-size:20px;display:flex;justify-content:space-between;gap:10px}
+.pc h3 .nm{font:inherit;color:inherit;display:flex;align-items:center}
 .pc h3 span{font:500 15px Heebo;color:var(--mute);white-space:nowrap}
 .grid{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:5px}
 .sq{aspect-ratio:1;border-radius:6px;border:0;background:var(--chalk);cursor:pointer;padding:0;font:500 11px Heebo;color:var(--mute);min-height:24px}
@@ -181,12 +182,16 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
 .confetti i{position:absolute;top:-20px;width:10px;height:16px;border-radius:2px;animation:fall 2.6s linear forwards}
 @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
 @media(prefers-reduced-motion:reduce){.confetti{display:none}}
+.av{width:1.5em;height:1.5em;border-radius:50%;object-fit:cover;vertical-align:middle;margin-inline-end:.35em;flex:none;border:2px solid #fff;box-shadow:0 0 0 1px var(--line)}
+.av.lg{width:2em;height:2em}
 .pname{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:start;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:5px}
 .prof{position:fixed;inset:0;z-index:55;background:rgba(0,0,0,.5);display:grid;place-items:center;padding:16px}
 .prof[hidden]{display:none}
-.pcard{position:relative;background:var(--bg);color:var(--ink);border-radius:20px;padding:22px;width:min(100%,440px);max-height:90vh;overflow:auto;border-top:8px solid var(--red)}
+.pcard{position:relative;background:var(--bg);color:var(--ink);border-radius:20px;padding:22px;overflow-x:hidden;width:min(100%,440px);max-height:90vh;overflow:auto;border-top:8px solid var(--red)}
 .pcard h2{margin:0 0 4px;font-size:28px}
-.pclose{position:absolute;top:10px;inset-inline-end:10px;width:44px;height:44px;border-radius:50%;border:0;background:var(--card);color:var(--ink);font-size:18px;cursor:pointer}
+.pphoto{display:block;width:calc(100% + 44px);margin:-22px -22px 16px;aspect-ratio:4/5;max-height:62vh;object-fit:cover;border-radius:12px 12px 0 0;background:var(--card)}
+.pphoto.none{display:grid;place-items:center;aspect-ratio:auto;height:120px;color:var(--mute);font-size:15px}
+.pclose{position:absolute;z-index:2;top:10px;inset-inline-end:10px;width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.9);color:#141414;box-shadow:0 2px 8px rgba(0,0,0,.25);color:var(--ink);font-size:18px;cursor:pointer}
 .pnick{color:var(--red-d);font:700 17px Rubik;margin-bottom:12px}
 .pfacts{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 14px;margin:0}
 .pfacts dt{color:var(--mute)}.pfacts dd{margin:0;font-weight:700;overflow-wrap:anywhere}
@@ -216,7 +221,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
 <div class="confetti" id="confetti" hidden></div>
 <div class="prof" id="prof" hidden role="dialog" aria-modal="true" aria-labelledby="profName"><div class="pcard">
   <button type="button" class="pclose" id="profClose" aria-label="סגור">✕</button>
-  <h2 id="profName"></h2><div id="profBody"></div>
+  <div id="profPhoto"></div><h2 id="profName"></h2><div id="profBody"></div>
 </div></div>
 <div class="stk" id="stk" hidden role="dialog" aria-live="polite"><img id="stkImg" src="sticker.webp" alt="כולך מלךךךך"><div class="cap" id="stkCap" hidden></div></div>
 <main>
@@ -331,7 +336,7 @@ async function api(path,body){
 
 function statusOf(p){
   const T=todayIdx(),missed=[];
-  for(let d=1;d<Math.min(T,DAYS+1);d++){const t=val(p,d).t;if(t>=DAILY)continue;
+  for(let d=Math.max(1,p.joinedDay||1);d<Math.min(T,DAYS+1);d++){const t=val(p,d).t;if(t>=DAILY)continue;
     const w=dateOf(d).getDay();if((w===5||w===6)&&d+(w===5?2:1)>=T)continue;
     if(!(d+1<T&&val(p,d+1).t>=DAILY+(DAILY-t)))missed.push(d)}
   // what a warned player still owes today (to cover yesterday)
@@ -361,7 +366,7 @@ function renderCup(){const c=cupOf(),el=$('cup');
   if(!c.best){el.innerHTML='<small>אין מספיק תיעודים בשבוע שעבר.</small>';return}
   const mins=Math.round(c.best.avg/6e4),hh=Math.floor(mins/60),mm=mins%60,late=hh>=24;
   const t=`${String(hh%24).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
-  el.innerHTML=`<div class="w"><span aria-hidden="true">🦥</span>${esc(c.best.p.name)}</div><small>מתעד/ת בממוצע ב-${t}${late?' (אחרי חצות!)':''}</small>`}
+  el.innerHTML=`<div class="w"><span aria-hidden="true">🦥</span>${av(c.best.p)}${esc(c.best.p.name)}</div><small>מתעד/ת בממוצע ב-${t}${late?' (אחרי חצות!)':''}</small>`}
 
 const KING=220;
 const isKing=p=>{const T=todayIdx();return T>=2&&T-1<=DAYS&&val(p,T-1).t>KING};
@@ -378,7 +383,7 @@ function timeTitles(){
     const mins=(e.at-(Date.UTC(2026,10,23)+(d-1)*864e5-2*3600e3))/6e4;if(mins>=23*60+45&&mins<24*60)edge.add(p.id)}}
   return{early:early&&early.p.id,edge}}
 function renderKings(){const ks=players.filter(isKing);
-  $('kings').innerHTML=ks.length?ks.map(p=>`<div class="k">👑 ${esc(p.name)}</div>`).join(''):'<small>אף אחד. עוד.</small>'}
+  $('kings').innerHTML=ks.length?ks.map(p=>`<div class="k">👑 ${av(p)}${esc(p.name)}</div>`).join(''):'<small>אף אחד. עוד.</small>'}
 function betsClosed(){return players.some(p=>statusOf(p).out)}
 function renderBets(){
   const closed=betsClosed(),firstOut=closed?players.map(p=>({p,st:statusOf(p)})).filter(x=>x.st.out).sort((a,b)=>a.st.missed[1]-b.st.missed[1])[0].p:null;
@@ -388,7 +393,7 @@ function renderBets(){
   $('betBoard').innerHTML=closed
     ?(()=>{const w=Object.entries(bets).filter(([,t])=>t===firstOut.id).map(([v])=>players.find(x=>x.id===v)).filter(Boolean);
        return `<li class="none">ניחשו נכון: ${w.length?w.map(p=>esc(p.name)).join(', '):'אף אחד'}</li>`})()
-    :rows.length?rows.slice(0,5).map(r=>`<li><span>${esc(r.p.name)}</span><b>${r.n} ${r.n===1?'הימור':'הימורים'}</b></li>`).join(''):'<li class="none">עוד אין הימורים. תהיה הראשון.</li>';
+    :rows.length?rows.slice(0,5).map(r=>`<li><span>${av(r.p)}${esc(r.p.name)}</span><b>${r.n} ${r.n===1?'הימור':'הימורים'}</b></li>`).join(''):'<li class="none">עוד אין הימורים. תהיה הראשון.</li>';
   const pick=$('betPick'),cur=me&&bets[me];
   if(document.activeElement!==pick)pick.innerHTML='<option value="">על מי את/ה מהמר/ת?</option>'+players.map(p=>`<option value="${esc(p.id)}"${p.id===cur?' selected':''}>${esc(p.name)}</option>`).join('');
   pick.disabled=$('betGo').disabled=closed;
@@ -411,9 +416,13 @@ let profFor=null;
 function openProfile(id){const p=players.find(x=>x.id===id);if(!p)return;profFor=id;
   const pr=p.profile||{},mine=id===me,s=statsOf(p);
   $('profName').textContent=p.name;
+  const ph=pr.photoV?`<img class="pphoto" src="/api/img?avatar=${encodeURIComponent(id)}&v=${pr.photoV}" alt="${esc(p.name)}">`:(mine?'<div class="pphoto none">עוד אין תמונה. תעלה/י אחת למטה.</div>':'');
+  $('profPhoto').innerHTML=ph;
   const facts=[['גיל',pr.age],['מצב משפחתי',pr.status],['מאכל אהוב',pr.food],['ימים מלאים',s.full],['סה"כ חזרות',fmt(s.tt)]].filter(([,v])=>v!=null&&v!=='');
   const view=`${pr.nick?`<div class="pnick">"${esc(pr.nick)}"</div>`:''}<dl class="pfacts">${facts.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>${!mine&&!p.profile?'<p class="note">עוד לא מילא/ה פרטים.</p>':''}`;
   const form=mine?`<form class="pform" id="profForm"><h3 style="margin:16px 0 0">הפרטים שלי</h3>
+    <label>תמונה (תופיע גדולה בראש הכרטיס)<input name="photo" type="file" accept="image/*"></label>
+    ${pr.photoV?'<label style="display:flex;gap:8px;align-items:center;font-weight:500"><input type="checkbox" name="removePhoto" style="min-height:auto"> להסיר את התמונה</label>':''}
     <label>שם<input name="name" maxlength="40" value="${esc(p.name)}"></label>
     <label>כינוי<input name="nick" maxlength="40" value="${esc(pr.nick||'')}" placeholder="למשל: מכונת המתח"></label>
     <label>גיל<input name="age" type="number" inputmode="numeric" min="10" max="120" value="${pr.age??''}"></label>
@@ -429,10 +438,13 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')$('prof').hidden=tru
 $('prof').addEventListener('submit',async e=>{if(e.target.id!=='profForm')return;e.preventDefault();
   const f=new FormData(e.target),n=$('profNote'),pin=pins[me];
   if(!pin){n.textContent='חסר הקוד האישי שלך. תתעד/י פעם אחת ואז תוכל/י לשמור.';return}
-  const profile={name:f.get('name'),nick:f.get('nick'),age:f.get('age'),status:f.get('status'),food:f.get('food')};
-  n.textContent='שומר…';
+  const profile={name:f.get('name'),nick:f.get('nick'),age:f.get('age'),status:f.get('status'),food:f.get('food'),removePhoto:!!f.get('removePhoto')};
+  const file=f.get('photo');n.textContent='שומר…';
+  if(file&&file.size){try{profile.photo=await shrink(file)}catch(x){n.textContent='לא הצלחתי לפתוח את התמונה.';return}}
   try{await api('/api/profile',{id:me,pin,profile});await refresh();openProfile(me);$('profNote')&&($('profNote').textContent='נשמר.')}
   catch(err){n.textContent=err.msg==='name_taken'?'השם הזה כבר תפוס.':err.msg==='bad_age'?'גיל לא תקין.':err.status===403?'הקוד לא נכון.':'השמירה לא הצליחה.'}});
+const av=(p,cls='')=>p&&p.profile&&p.profile.photoV?`<img class="av ${cls}" src="/api/img?avatar=${encodeURIComponent(p.id)}&v=${p.profile.photoV}" alt="" loading="lazy">`:'';
+const byId=id=>players.find(x=>x.id===id);
 function renderHero(){
   const T=todayIdx();const cur=Math.max(0,Math.min(DAYS,T));
   $('dayNum').firstChild.nodeValue=T<1?'0':T>DAYS?'100':String(cur);
@@ -441,12 +453,12 @@ function renderHero(){
   let gt=0;players.forEach(p=>{gt+=statsOf(p).tt});
   const down=players.map(p=>({p,st:statusOf(p)})).filter(x=>x.st.out).sort((a,b)=>a.st.missed[1]-b.st.missed[1]);
   renderCup();renderKings();renderBets();
-  $('fallen').innerHTML=down.length?down.map(({p,st})=>`<li>${esc(p.name)} <span>✕ יום ${st.missed[1]}</span></li>`).join(''):'<li class="none">אף אחד לא נפל. בינתיים.</li>';
+  $('fallen').innerHTML=down.length?down.map(({p,st})=>`<li><b style="display:flex;align-items:center">${av(p)}${esc(p.name)}</b> <span>✕ יום ${st.missed[1]}</span></li>`).join(''):'<li class="none">אף אחד לא נפל. בינתיים.</li>';
   $('meta').innerHTML=`<span>סיום: <b>${dateOf(DAYS).toLocaleDateString('he-IL')}</b></span><span>נשארו: <b>${Math.max(0,Math.min(DAYS,DAYS-T+1))}</b> ימים</span><span>כל הקבוצה: <b>${fmt(gt)}</b> חזרות</span>`;
 }
 function renderWho(){
   const mp=me&&players.find(x=>x.id===me);if(me&&loaded&&!mp){me=null;store.set('c100me',null)}
-  if(mp){sel=me;$('pickWrap').hidden=true;$('meLine').hidden=false;$('meLine').innerHTML=`מתעד/ת בתור: <b>${esc(mp.name)}</b> <button type="button" id="switchMe">לא את/ה?</button>`;return}
+  if(mp){sel=me;$('pickWrap').hidden=true;$('meLine').hidden=false;$('meLine').innerHTML=`מתעד/ת בתור: ${av(mp)}<b>${esc(mp.name)}</b> <button type="button" id="switchMe">לא את/ה?</button>`;return}
   $('pickWrap').hidden=false;$('meLine').hidden=true;
   if(sel&&!players.find(p=>p.id===sel))sel=null;
   $('who').innerHTML='<option value=""'+(sel?'':' selected')+'>בחר את השם שלך…</option>'+(players.length?players.map(p=>{const st=statusOf(p);return `<option value="${esc(p.id)}"${p.id===sel?' selected':''}>${crown(p)}${esc(p.name)}${st.out?' ✕ (בחוץ)':st.warn?' ⚠ (אזהרה)':''}</option>`}).join(''):'')+'<option value="__new">+ אני חדש/ה באתגר, להצטרף</option>';
@@ -467,7 +479,7 @@ function renderBoard(){
   if(!players.length){$('board').innerHTML=`<div class="empty">${loaded?'אין עדיין משתתפים. הצטרפו למטה.':'טוען נתונים…'}</div>`;return}
   const tt=timeTitles();const rows=players.map(p=>({p,s:statsOf(p),st:statusOf(p)})).sort((a,b)=>a.st.out-b.st.out||b.s.full-a.s.full||b.s.score-a.s.score);
   $('board').innerHTML=rows.map(({p,s,st},i)=>`<div class="p${st.out?' out':''}">
-    <div><div class="rank">${st.out?'בחוץ':'מקום '+(i+1)}</div><h3><button type="button" class="pname" data-prof="${esc(p.id)}">${crown(p)}${esc(p.name)}</button>${st.warn?'<span class="excuse">כבר הספקתי לתרץ תירוצים</span>':''}${st.out?'<span class="xmark" aria-label="עף מהאתגר">✕</span>':''}</h3>${st.out?`<div class="outb">עף מהאתגר · פספס את ימים ${st.missed[0]} ו-${st.missed[1]}</div>`:''}${p.id===tt.early?'<span class="tbadge">🐦 ציפור בוקר</span>':''}${tt.edge.has(p.id)?'<span class="tbadge">⏱️ חי על הקצה</span>':''}${avgLogMin(p)!=null?`<span class="tbadge">מתעד/ת בממוצע ב-${hm(avgLogMin(p))}</span>`:''}
+    <div><div class="rank">${st.out?'בחוץ':'מקום '+(i+1)}</div><h3><button type="button" class="pname" data-prof="${esc(p.id)}">${av(p,'lg')}${crown(p)}${esc(p.name)}</button>${st.warn?'<span class="excuse">כבר הספקתי לתרץ תירוצים</span>':''}${st.out?'<span class="xmark" aria-label="עף מהאתגר">✕</span>':''}</h3>${st.out?`<div class="outb">עף מהאתגר · פספס את ימים ${st.missed[0]} ו-${st.missed[1]}</div>`:''}${p.id===tt.early?'<span class="tbadge">🐦 ציפור בוקר</span>':''}${tt.edge.has(p.id)?'<span class="tbadge">⏱️ חי על הקצה</span>':''}${avgLogMin(p)!=null?`<span class="tbadge">מתעד/ת בממוצע ב-${hm(avgLogMin(p))}</span>`:''}
       <div class="stats"><span><b>${s.full}</b> ימים מלאים</span><span><b>${s.rate}%</b> הצלחה עד היום</span><span><b>${s.streak}</b> ברצף</span></div></div>
     <div>
       <div class="bar"><div class="t"><span>סה"כ חזרות</span><b>${fmt(s.tt)} / 20,000 · ${Math.round(s.tt/200)}%</b></div><div class="f"><i style="width:${Math.min(100,s.tt/200)}%"></i></div></div>
@@ -477,13 +489,13 @@ function renderBoard(){
 function renderCards(){
   const T=todayIdx();
   $('cards').innerHTML=players.map(p=>{const s=statsOf(p);
-    const st=statusOf(p);return `<div class="pc${st.out?' out':st.warn?' warned':''}"><h3>${crown(p)}${esc(p.name)}<span>${st.out?'עף מהאתגר ✕':st.warn?'אזהרה':s.full+'/100'}</span></h3><div class="grid">${Array.from({length:DAYS},(_,i)=>{const d=i+1,v=val(p,d);
-      const w=dateOf(d).getDay(),pend=(w===5||w===6)&&d+(w===5?2:1)>=T;let c=v.t>=DAILY?'full':v.t?'part':d<T&&!pend?'miss':'';
+    const st=statusOf(p);return `<div class="pc${st.out?' out':st.warn?' warned':''}"><h3><span class="nm">${av(p)}${crown(p)}${esc(p.name)}</span><span>${st.out?'עף מהאתגר ✕':st.warn?'אזהרה':s.full+'/100'}</span></h3><div class="grid">${Array.from({length:DAYS},(_,i)=>{const d=i+1,v=val(p,d);
+      const w=dateOf(d).getDay(),pend=(w===5||w===6)&&d+(w===5?2:1)>=T;let c=v.t>=DAILY?'full':v.t?'part':d<T&&!pend&&d>=(p.joinedDay||1)?'miss':'';
       if(d===T)c+=' today';if(p.id===sel&&d===edDay)c+=' sel';
       return `<button class="sq ${c}" data-p="${esc(p.id)}" data-d="${d}" aria-label="${esc(p.name)} יום ${d}: ${v.t} חזרות">${d}</button>`}).join('')}</div></div>`}).join('');
 }
 function renderAs(){const p=players.find(x=>x.id===sel);const a=$('chatAs');if(a)a.textContent=p?`שולח/ת בתור: ${p.name}`:'כדי לכתוב, בחר/י את השם שלך ב"מי אתה?" למעלה.'}
-function renderAll(keepEditor){renderAs();renderHero();renderWho();renderBoard();renderCards();if(typeof renderBell==='function')renderBell();if(!keepEditor)loadEditor()}
+function renderAll(keepEditor){renderAs();if(chatMsgs.length)renderChat();renderHero();renderWho();renderBoard();renderCards();if(typeof renderBell==='function')renderBell();if(!keepEditor)loadEditor()}
 
 async function refresh(){
   try{const j=await api('/api/state');players=j.players||[];bets=j.bets||{};loaded=true;renderAll(dirty)}
@@ -547,7 +559,7 @@ $('save').addEventListener('click',async()=>{
 $('addForm').addEventListener('submit',async e=>{e.preventDefault();const name=$('addName').value.trim(),pin=$('addPin').value.trim();
   if(!name){$('status').textContent='צריך שם.';return}
   if(!/^\d{4}$/.test(pin)){$('status').textContent='צריך קוד אישי של 4 ספרות.';return}
-  try{const j=await api('/api/join',{name,pin});pins[j.id]=pin;store.set('c100pins',pins);sel=j.id;lockMe();store.set('c100who',sel);
+  try{const j=await api('/api/join',{name,pin});pins[j.id]=pin;store.set('c100pins',pins);await refresh();sel=j.id;lockMe();store.set('c100who',sel);
     $('addName').value='';$('addPin').value='';$('status').textContent=name+', ברוך הבא לאתגר.';await refresh();loadEditor()}
   catch(err){$('status').textContent=err.msg==='name_taken'?'השם הזה כבר באתגר.':'ההצטרפות לא הצליחה, נסה שוב.'}});
 
@@ -557,9 +569,9 @@ let chatMsgs=[],chatImg=null,chatSig='';
 const tfmt=ts=>{const d=new Date(ts),t=new Date();const hm=d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});return d.toDateString()===t.toDateString()?hm:d.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'})+' '+hm};
 function renderChat(){
   const f=$('feed');if(!chatMsgs.length){f.innerHTML='<div class="empty">עוד אין הודעות. תהיה הראשון להעלות תמונה מהאימון.</div>';return}
-  const sig=chatMsgs.map(m=>m.mid+m.ts).join();if(sig===chatSig)return;
+  const sig=chatMsgs.map(m=>m.mid+m.ts).join()+players.map(p=>p.id+(p.profile&&p.profile.photoV||'')).join();if(sig===chatSig)return;
   const atBottom=f.scrollHeight-f.scrollTop-f.clientHeight<60||!chatSig;chatSig=sig;
-  f.innerHTML=chatMsgs.map(m=>m.auto?`<div class="msg auto"><p>${esc(m.text)}</p><time>${tfmt(m.ts)}</time></div>`:`<div class="msg${m.pid===sel?' me':''}"><div class="who"><span>${esc(m.name)}</span><time>${tfmt(m.ts)}</time></div>${m.text?`<p>${esc(m.text)}</p>`:''}${m.hasImg?`<img loading="lazy" src="/api/img?id=${encodeURIComponent(m.mid)}" alt="תמונה מ${esc(m.name)}">`:''}</div>`).join('');
+  f.innerHTML=chatMsgs.map(m=>m.auto?`<div class="msg auto"><p>${esc(m.text)}</p><time>${tfmt(m.ts)}</time></div>`:`<div class="msg${m.pid===sel?' me':''}"><div class="who"><span style="display:flex;align-items:center">${av(byId(m.pid))}${esc((byId(m.pid)||m).name)}</span><time>${tfmt(m.ts)}</time></div>${m.text?`<p>${esc(m.text)}</p>`:''}${m.hasImg?`<img loading="lazy" src="/api/img?id=${encodeURIComponent(m.mid)}" alt="תמונה מ${esc(m.name)}">`:''}</div>`).join('');
   if(atBottom)f.scrollTop=f.scrollHeight;
 }
 async function loadChat(){try{const j=await api('/api/chat');chatMsgs=j.messages||[];renderChat()}catch(e){}}

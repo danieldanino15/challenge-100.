@@ -27,7 +27,7 @@ export default async function handler(req, res) {
   let sent = 0, removed = 0, skipped = 0;
   for (const id of Object.keys(players)) {
     const [log, subs] = await Promise.all([redis.hgetall(`log:${id}`), redis.hgetall(`subs:${id}`)]);
-    if (!subs || total(log, T) >= DAILY || isOut(log, T)) { skipped++; continue; }
+    if (!subs || total(log, T) >= DAILY || isOut(log, T, players[id].joinedDay)) { skipped++; continue; }
     for (const [key, sub] of Object.entries(subs)) {
       try {
         await webpush.sendNotification(sub, payload, { TTL: 3 * 3600, urgency: 'high' });

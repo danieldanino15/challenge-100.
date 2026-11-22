@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     const T = todayIdx();
     const ids = Object.keys(players);
     const logs = await Promise.all(ids.map(pid => redis.hgetall(`log:${pid}`)));
-    if (logs.some(l => isOut(l, T))) return sendJson(res, 409, { error: 'closed' });
+    if (logs.some((l, i) => isOut(l, T, players[ids[i]].joinedDay))) return sendJson(res, 409, { error: 'closed' });
     await redis.hset('bets', { [id]: { target, ts: Date.now() } });
     sendJson(res, 200, { ok: true });
   } catch (e) {

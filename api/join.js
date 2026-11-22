@@ -1,4 +1,5 @@
 import { redis, getPlayers, hashPin, newId, sendJson } from '../lib/store.js';
+import { todayIdx } from '../lib/rules.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return sendJson(res, 405, { error: 'method' });
@@ -12,7 +13,7 @@ export default async function handler(req, res) {
     }
     if (Object.keys(players).length >= 50) return sendJson(res, 400, { error: 'full' });
     const id = newId();
-    await redis.hset('players', { [id]: { name, order: Date.now(), pinHash: hashPin(id, pin) } });
+    await redis.hset('players', { [id]: { name, order: Date.now(), pinHash: hashPin(id, pin), joinedDay: Math.max(1, todayIdx()) } });
     sendJson(res, 200, { id });
   } catch (e) {
     console.error(e);

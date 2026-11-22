@@ -17,7 +17,7 @@ export default async function handler(req, res) {
     if (auth === 'no_player') return sendJson(res, 404, { error: 'no_player' });
     if (auth === 'wrong_pin') return sendJson(res, 403, { error: 'wrong_pin' });
     const log = (await redis.hgetall(`log:${id}`)) || {};
-    if (auth !== 'admin' && isOut(log, todayIdx())) return sendJson(res, 403, { error: 'out' });
+    if (auth !== 'admin' && isOut(log, todayIdx(), players[id].joinedDay)) return sendJson(res, 403, { error: 'out' });
     // `at` = when this day was first logged (used for the weekly "slacker cup").
     const at = (log[day] && log[day].at) || Date.now();
     await redis.hset(`log:${id}`, { [day]: { p, s, q, m, at } });
