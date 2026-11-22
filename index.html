@@ -102,14 +102,23 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
 .pc.warned{box-shadow:inset 0 0 0 3px light-dark(#f2c230,#b38900)}
 .pc.out::after{content:"";position:absolute;inset:0;border-radius:18px;pointer-events:none;opacity:.9;
  background:linear-gradient(to top right,transparent calc(50% - 5px),var(--red) calc(50% - 5px),var(--red) calc(50% + 5px),transparent calc(50% + 5px)),linear-gradient(to top left,transparent calc(50% - 5px),var(--red) calc(50% - 5px),var(--red) calc(50% + 5px),transparent calc(50% + 5px))}
-@media(max-width:600px){.score{grid-template-columns:1fr;gap:18px}.ex{grid-template-columns:1fr}.p{grid-template-columns:1fr;gap:10px}.track{gap:3px}}
+.hero{padding-block:clamp(22px,3vw,44px)}
+.hero .score{margin-top:18px}
+.logband{padding-top:clamp(20px,3vw,40px)}
+.wholbl{display:block;font-weight:700;margin-bottom:6px}
+.whosel{width:100%;font:700 20px Rubik;min-height:54px;border:2px solid var(--ink);border-radius:14px;padding:8px 14px;background:var(--bg);color:var(--ink);margin-bottom:16px}
+.whosel:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+.jump{display:inline-block;margin-top:14px;font-weight:700;color:var(--red-d);text-decoration:none;padding:10px 0;min-height:44px}
+.rules li.hot{background:var(--red);border-color:var(--red);color:#fff;font-weight:900}
+.rules li.hot::before{background:#fff;color:var(--red)}
+@media(max-width:600px){.hero h1{font-size:30px}.day{font-size:64px}.track{display:none}.score{grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center}.day small{font-size:13px}.meta{font-size:13px;margin-top:0;flex-direction:column;gap:2px}.ex{gap:10px}.box{padding:12px}.row input{font-size:28px;min-height:50px}.quick button{padding:6px 9px;font-size:14px}.p{grid-template-columns:1fr;gap:10px}.track{gap:3px}}
 @media(prefers-reduced-motion:reduce){.bar .f i{transition:none}}
 </style>
 </head>
 <body>
 <header class="band hero"><div class="wrap">
-  <h1>100 ימים. 100 שכיבות סמיכה. 100 כפיפות בטן.</h1>
-  <p>כל יום, בלי הנחות. מילה זו מילה.</p>
+  <h1>בוא נראה מי הראשון שיפול.</h1>
+  <p>100 ימים. 100 שכיבות סמיכה. 100 כפיפות בטן. כל יום, בלי הנחות.</p>
   <div class="score">
     <div class="day" id="dayNum">0<small id="dayLbl">מתחילים היום! · 23.11.2026</small></div>
     <div>
@@ -121,16 +130,12 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
 
 <div class="stk" id="stk" hidden role="dialog" aria-label="כולך מלך"><img src="sticker.webp" alt="כולך מלךךךך"></div>
 <main>
-<section class="band"><div class="wrap">
-  <h2>החוקים</h2>
-  <ol class="rules"><li>לא מפספסים יום.</li><li>מתעדים כאן בסוף כל יום.</li><li>מקסימום 5 סטים ביום.</li><li>פספסת יום? אזהרה, ומשלימים למחרת (200+200). פספוס שני? עפת מהאתגר.</li></ol>
-</div></section>
-
-<section class="band" style="padding-top:0"><div class="wrap">
+<section class="band logband"><div class="wrap">
   <h2 id="logTitle">מה עשית היום?</h2>
   <div class="log">
     <div class="warn" id="alert" hidden style="margin:0 0 14px"></div>
-    <div class="pills" id="who"></div>
+    <label class="wholbl" for="who">מי אתה?</label>
+    <select id="who" class="whosel"></select>
     <div class="dayline"><button class="step" id="prev" aria-label="יום קודם">›</button><span>יום <b id="edDay">1</b> · <span id="edDate"></span></span><button class="step" id="next" aria-label="יום הבא">‹</button></div>
     <div class="ex">
       <div class="box"><label for="inP">שכיבות סמיכה</label>
@@ -146,9 +151,15 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
     <button class="save" id="save" disabled>שמור</button>
     <div class="note" id="note" role="status"></div>
   </div>
+  <a class="jump" href="#progress">לטבלה ולהתקדמות של כולם ↓</a>
 </div></section>
 
 <section class="band" style="padding-top:0"><div class="wrap">
+  <h2>החוקים</h2>
+  <ol class="rules"><li>לא מפספסים יום.</li><li class="hot">מתעדים כאן בסוף כל יום.</li><li>מקסימום 5 סטים ביום.</li><li class="hot">פספסת יום? אזהרה, ומשלימים למחרת (200+200). פספוס שני? עפת מהאתגר.</li></ol>
+</div></section>
+
+<section class="band" style="padding-top:0" id="progress"><div class="wrap">
   <h2>טבלת המובילים</h2>
   <div class="board" id="board"></div>
 </div></section>
@@ -211,7 +222,7 @@ function renderHero(){
 }
 function renderWho(){
   if(!players.find(p=>p.id===sel))sel=players[0]?.id||null;
-  $('who').innerHTML=players.map(p=>`<button class="pill" data-id="${esc(p.id)}" aria-pressed="${p.id===sel}">${esc(p.name)}</button>`).join('')||'<span class="empty">עוד אין משתתפים</span>';
+  $('who').innerHTML=players.length?players.map(p=>{const st=statusOf(p);return `<option value="${esc(p.id)}"${p.id===sel?' selected':''}>${esc(p.name)}${st.out?' ✕ (בחוץ)':st.warn?' ⚠ (אזהרה)':''}</option>`}).join(''):'<option value="">עוד אין משתתפים</option>';
 }
 function loadEditor(){
   const p=players.find(x=>x.id===sel);
@@ -251,7 +262,7 @@ async function refresh(){
   catch(e){if(!loaded)$('board').innerHTML='<div class="empty">לא ניתן לטעון את הנתונים כרגע. נסה לרענן.</div>'}
 }
 
-$('who').addEventListener('click',e=>{const b=e.target.closest('.pill');if(!b)return;sel=b.dataset.id;store.set('c100who',sel);renderWho();renderCards();loadEditor()});
+$('who').addEventListener('change',e=>{sel=e.target.value;store.set('c100who',sel);renderCards();loadEditor()});
 $('prev').addEventListener('click',()=>{if(edDay>1){edDay--;renderCards();loadEditor()}});
 $('next').addEventListener('click',()=>{if(edDay<DAYS){edDay++;renderCards();loadEditor()}});
 $('cards').addEventListener('click',e=>{const b=e.target.closest('.sq');if(!b)return;sel=b.dataset.p;edDay=+b.dataset.d;store.set('c100who',sel);renderWho();renderCards();loadEditor();$('logTitle').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})});
