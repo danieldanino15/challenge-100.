@@ -152,14 +152,24 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
 .prev button{position:absolute;top:4px;inset-inline-end:4px;width:32px;height:32px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;cursor:pointer}
 .prev[hidden]{display:none}
 @media(prefers-reduced-motion:reduce){.jump b{animation:none}}
-@media(max-width:600px){.ex{grid-template-columns:repeat(2,minmax(0,1fr))}.ex .box{padding:10px}.ex .box label{min-height:2.6em;display:flex;align-items:flex-end;line-height:1.25}.ex .quick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.ex .quick button{padding:6px 0}.jump b{font-size:48px}.jump span{font-size:14px}.ex .box label{font-size:14px}.row input{font-size:24px!important}.hero h1{font-size:30px}.day{font-size:64px}.track{display:none}.score{grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center}.day small{font-size:13px}.meta{font-size:13px;margin-top:0;flex-direction:column;gap:2px}.ex{gap:10px}.box{padding:12px}.row input{font-size:28px;min-height:50px}.quick button{padding:6px 9px;font-size:14px}.p{grid-template-columns:1fr;gap:10px}.track{gap:3px}}
+.htop{display:grid;grid-template-columns:minmax(0,1fr) minmax(200px,280px);gap:24px;align-items:start}
+.fallen{background:#141414;color:#fff;border-radius:16px;padding:14px 16px}
+.fallen h2{font:900 20px Rubik;margin:0 0 8px;color:#fff}
+.fallen ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.fallen li{font:700 17px Rubik;display:flex;justify-content:space-between;gap:8px;text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:2px}
+.fallen li span{text-decoration:none;color:var(--red);font-weight:900}
+.fallen li.none{text-decoration:none;font:500 15px Heebo;opacity:.8}
+@media(max-width:600px){.htop{grid-template-columns:1fr;gap:14px}.fallen{padding:10px 14px}.fallen h2{font-size:17px}.ex{grid-template-columns:repeat(2,minmax(0,1fr))}.ex .box{padding:10px}.ex .box label{min-height:2.6em;display:flex;align-items:flex-end;line-height:1.25}.ex .quick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.ex .quick button{padding:6px 0}.jump b{font-size:48px}.jump span{font-size:14px}.ex .box label{font-size:14px}.row input{font-size:24px!important}.hero h1{font-size:30px}.day{font-size:64px}.track{display:none}.score{grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center}.day small{font-size:13px}.meta{font-size:13px;margin-top:0;flex-direction:column;gap:2px}.ex{gap:10px}.box{padding:12px}.row input{font-size:28px;min-height:50px}.quick button{padding:6px 9px;font-size:14px}.p{grid-template-columns:1fr;gap:10px}.track{gap:3px}}
 @media(prefers-reduced-motion:reduce){.bar .f i{transition:none}}
 </style>
 </head>
 <body>
 <header class="band hero"><div class="wrap">
-  <h1>בוא נראה מי הראשון שיפול.</h1>
-  <p>100 ימים. 200 חזרות ביום מכל התרגילים ביחד: שכיבות סמיכה, כפיפות בטן, סקוואט ומתח. מחלקים איך שרוצים.</p>
+  <div class="htop">
+    <div><h1>בוא נראה מי הראשון שיפול.</h1>
+    <p>100 ימים. 200 חזרות ביום מכל התרגילים ביחד: שכיבות סמיכה, כפיפות בטן, סקוואט ומתח. מחלקים איך שרוצים.</p></div>
+    <aside class="fallen" aria-label="שמות הנופלים"><h2>שמות הנופלים</h2><ul id="fallen"></ul></aside>
+  </div>
   <div class="score">
     <div class="day" id="dayNum">0<small id="dayLbl">מתחילים היום! · 23.11.2026</small></div>
     <div>
@@ -294,6 +304,8 @@ function renderHero(){
   $('dayLbl').textContent=T<1?(T===0?'מתחילים היום! · 23.11.2026':'עוד '+(1-T)+' ימים להתחלה'):T>DAYS?'האתגר הושלם':T===1?'מתחילים היום! · 23.11.2026':'מתוך 100 ימים';
   $('track').innerHTML=Array.from({length:DAYS},(_,i)=>`<i class="${i+1<T?'past':i+1===T?'now':''}"></i>`).join('');
   let gt=0;players.forEach(p=>{gt+=statsOf(p).tt});
+  const down=players.map(p=>({p,st:statusOf(p)})).filter(x=>x.st.out).sort((a,b)=>a.st.missed[1]-b.st.missed[1]);
+  $('fallen').innerHTML=down.length?down.map(({p,st})=>`<li>${esc(p.name)} <span>✕ יום ${st.missed[1]}</span></li>`).join(''):'<li class="none">עוד אף אחד לא נפל. עוד.</li>';
   $('meta').innerHTML=`<span>סיום: <b>${dateOf(DAYS).toLocaleDateString('he-IL')}</b></span><span>נשארו: <b>${Math.max(0,Math.min(DAYS,DAYS-T+1))}</b> ימים</span><span>כל הקבוצה: <b>${fmt(gt)}</b> חזרות</span>`;
 }
 function renderWho(){
