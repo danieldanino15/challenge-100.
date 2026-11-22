@@ -158,6 +158,8 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
 .fallen ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
 .fallen li{font:700 17px Rubik;display:flex;justify-content:space-between;gap:8px;text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:2px}
 .fallen li span{text-decoration:none;color:var(--red);font-weight:900}
+.cup{margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.2)}.cup h3{font:900 16px Rubik;margin:0 0 4px;color:#ffd5d0}
+.cup .w{font:900 19px Rubik}.cup .w span{font-size:24px;margin-inline-end:6px}.cup small{display:block;font-size:13px;opacity:.8}
 .fallen li.none{text-decoration:none;font:500 15px Heebo;opacity:.8}
 @media(max-width:600px){.htop{grid-template-columns:1fr;gap:14px}.fallen{padding:10px 14px}.fallen h2{font-size:17px}.ex{grid-template-columns:repeat(2,minmax(0,1fr))}.ex .box{padding:10px}.ex .box label{min-height:2.6em;display:flex;align-items:flex-end;line-height:1.25}.ex .quick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.ex .quick button{padding:6px 0}.jump b{font-size:48px}.jump span{font-size:14px}.ex .box label{font-size:14px}.row input{font-size:24px!important}.hero h1{font-size:30px}.day{font-size:64px}.track{display:none}.score{grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center}.day small{font-size:13px}.meta{font-size:13px;margin-top:0;flex-direction:column;gap:2px}.ex{gap:10px}.box{padding:12px}.row input{font-size:28px;min-height:50px}.quick button{padding:6px 9px;font-size:14px}.p{grid-template-columns:1fr;gap:10px}.track{gap:3px}}
 @media(prefers-reduced-motion:reduce){.bar .f i{transition:none}}
@@ -168,7 +170,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
   <div class="htop">
     <div><h1>בוא נראה מי הראשון שיפול.</h1>
     <p>100 ימים. 200 חזרות ביום מכל התרגילים ביחד: שכיבות סמיכה, כפיפות בטן, סקוואט ומתח. מחלקים איך שרוצים.</p></div>
-    <aside class="fallen" aria-label="שמות הנופלים"><h2>שמות הנופלים</h2><ul id="fallen"></ul></aside>
+    <aside class="fallen" aria-label="שמות הנופלים"><h2>שמות הנופלים</h2><ul id="fallen"></ul><div class="cup"><h3>גביע הסחבה של השבוע</h3><div id="cup"></div></div></aside>
   </div>
   <div class="score">
     <div class="day" id="dayNum">0<small id="dayLbl">מתחילים היום! · 23.11.2026</small></div>
@@ -298,6 +300,25 @@ function statusOf(p){
 function updTot(){const n=k=>Math.max(0,parseInt($(k).value)||0);const t=n('inP')+n('inS')+n('inQ')+n('inM');
   const p=players.find(x=>x.id===sel),st=p?statusOf(p):null,goal=st&&st.owe&&edDay===todayIdx()?st.owe:DAILY;
   $('totNum').textContent=`${t} / ${goal}`;$('totBar').style.width=Math.min(100,t/goal*100)+'%';$('totBar').parentNode.parentNode.classList.toggle('done',t>=goal)}
+
+// ---------- weekly slacker cup: who logged latest (on average) last Sunday-Saturday week
+const ISR_OFF=2*3600e3; // Israel winter time, UTC+2 (the whole challenge)
+function cupOf(){
+  const T=todayIdx(),w=dateOf(T).getDay();const lastSat=T-(w+1),first=Math.max(1,lastSat-6);
+  if(lastSat<1)return{pending:true,when:dateOf(T-w+7).toLocaleDateString('he-IL',{day:'numeric',month:'numeric'})};
+  let best=null;
+  for(const p of players){const ds=[];
+    for(let d=first;d<=Math.min(lastSat,DAYS);d++){const e=(p.log||{})[d];if(e&&e.at){const start=Date.UTC(2026,10,23)+(d-1)*864e5-ISR_OFF;ds.push(e.at-start)}}
+    if(!ds.length)continue;const avg=ds.reduce((a,b)=>a+b,0)/ds.length;
+    if(!best||avg>best.avg)best={p,avg}}
+  return{best,from:first,to:lastSat};
+}
+function renderCup(){const c=cupOf(),el=$('cup');
+  if(c.pending){el.innerHTML=`<small>יוכרז ביום ראשון ${c.when}</small>`;return}
+  if(!c.best){el.innerHTML='<small>אין מספיק תיעודים בשבוע שעבר.</small>';return}
+  const mins=Math.round(c.best.avg/6e4),hh=Math.floor(mins/60),mm=mins%60,late=hh>=24;
+  const t=`${String(hh%24).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+  el.innerHTML=`<div class="w"><span aria-hidden="true">🦥</span>${esc(c.best.p.name)}</div><small>מתעד/ת בממוצע ב-${t}${late?' (אחרי חצות!)':''}</small>`}
 function renderHero(){
   const T=todayIdx();const cur=Math.max(0,Math.min(DAYS,T));
   $('dayNum').firstChild.nodeValue=T<1?'0':T>DAYS?'100':String(cur);
@@ -305,7 +326,8 @@ function renderHero(){
   $('track').innerHTML=Array.from({length:DAYS},(_,i)=>`<i class="${i+1<T?'past':i+1===T?'now':''}"></i>`).join('');
   let gt=0;players.forEach(p=>{gt+=statsOf(p).tt});
   const down=players.map(p=>({p,st:statusOf(p)})).filter(x=>x.st.out).sort((a,b)=>a.st.missed[1]-b.st.missed[1]);
-  $('fallen').innerHTML=down.length?down.map(({p,st})=>`<li>${esc(p.name)} <span>✕ יום ${st.missed[1]}</span></li>`).join(''):'<li class="none">עוד אף אחד לא נפל. עוד.</li>';
+  renderCup();
+  $('fallen').innerHTML=down.length?down.map(({p,st})=>`<li>${esc(p.name)} <span>✕ יום ${st.missed[1]}</span></li>`).join(''):'<li class="none">אף אחד לא נפל. בינתיים.</li>';
   $('meta').innerHTML=`<span>סיום: <b>${dateOf(DAYS).toLocaleDateString('he-IL')}</b></span><span>נשארו: <b>${Math.max(0,Math.min(DAYS,DAYS-T+1))}</b> ימים</span><span>כל הקבוצה: <b>${fmt(gt)}</b> חזרות</span>`;
 }
 function renderWho(){

@@ -15,11 +15,11 @@ export default async function handler(req, res) {
     const auth = await checkPin(players, id, pin);
     if (auth === 'no_player') return sendJson(res, 404, { error: 'no_player' });
     if (auth === 'wrong_pin') return sendJson(res, 403, { error: 'wrong_pin' });
-    if (auth !== 'admin') {
-      const log = await redis.hgetall(`log:${id}`);
-      if (isOut(log, todayIdx())) return sendJson(res, 403, { error: 'out' });
-    }
-    await redis.hset(`log:${id}`, { [day]: { p, s, q, m } });
+    const log = (await redis.hgetall(`log:${id}`)) || {};
+    if (auth !== 'admin' && isOut(log, todayIdx())) return sendJson(res, 403, { error: 'out' });
+    // `at` = when this day was first logged (used for the weekly "slacker cup").
+    const at = (log[day] && log[day].at) || Date.now();
+    await redis.hset(`log:${id}`, { [day]: { p, s, q, m, at } });
 
     // Post the log to the group chat (one message per person per day; a re-save updates it).
     const parts = [['שכיבות סמיכה', p], ['כפיפות בטן', s], ['סקוואט', q], ['מתח', m]]
