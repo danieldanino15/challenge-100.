@@ -1,6 +1,6 @@
 import { redis, getPlayers, sendJson } from '../lib/store.js';
 import { pushReady, webpush } from '../lib/push.js';
-import { DAYS, DAILY, todayIdx, total, isOut } from '../lib/rules.js';
+import { DAYS, DAILY, todayIdx, total, isOut, isShabbat } from '../lib/rules.js';
 
 const MESSAGES = {
   evening: 'נו יא סחבה, עוד רגע נגמר היום. תיעדת?',
@@ -20,6 +20,7 @@ export default async function handler(req, res) {
   const slot = (req.query && req.query.slot) === 'late' ? 'late' : 'evening';
   const T = todayIdx();
   if (T < 1 || T > DAYS) return sendJson(res, 200, { skipped: 'outside_challenge', day: T });
+  if (isShabbat(T)) return sendJson(res, 200, { skipped: 'shabbat', day: T });
 
   const players = await getPlayers();
   const payload = JSON.stringify({ title: 'אתגר 100 ימים', body: MESSAGES[slot], url: '/' });

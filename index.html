@@ -198,7 +198,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
 
 <section class="band" style="padding-top:0"><div class="wrap">
   <h2>החוקים</h2>
-  <ol class="rules"><li>לא מפספסים יום.</li><li class="hot">מתעדים כאן בסוף כל יום.</li><li>200 חזרות ביום משלושת התרגילים. מחלקים איך שרוצים.</li><li>מקסימום 5 סטים ביום.</li><li class="hot">פספסת יום? אזהרה, ולמחרת משלימים את מה שחסר. פספוס שני? עפת מהאתגר, הכניסה שלך נחסמת ויוטל עליך אות קלון של סחבה לנצח.</li></ol>
+  <ol class="rules"><li>לא מפספסים יום.</li><li class="hot">מתעדים כאן בסוף כל יום.</li><li>200 חזרות ביום משלושת התרגילים. מחלקים איך שרוצים.</li><li>מקסימום 5 סטים ביום.</li><li>שומרי שבת: את שישי ושבת אפשר לתעד עד סוף יום ראשון. אין תזכורות בשישי ובשבת.</li><li class="hot">פספסת יום? אזהרה, ולמחרת משלימים את מה שחסר. פספוס שני? עפת מהאתגר, הכניסה שלך נחסמת ויוטל עליך אות קלון של סחבה לנצח.</li></ol>
 </div></section>
 
 <section class="band" style="padding-top:0" id="chat"><div class="wrap">
@@ -265,10 +265,12 @@ async function api(path,body){
 function statusOf(p){
   const T=todayIdx(),missed=[];
   for(let d=1;d<Math.min(T,DAYS+1);d++){const t=val(p,d).t;if(t>=DAILY)continue;
+    const w=dateOf(d).getDay();if((w===5||w===6)&&d+(w===5?2:1)>=T)continue;
     if(!(d+1<T&&val(p,d+1).t>=DAILY+(DAILY-t)))missed.push(d)}
   // what a warned player still owes today (to cover yesterday)
   const y=T-1,yt=y>=1&&y<=DAYS?val(p,y).t:DAILY;
-  const owe=yt<DAILY&&T<=DAYS?DAILY+(DAILY-yt):0;
+  const yw=y>=1?dateOf(y).getDay():0;
+  const owe=yt<DAILY&&T<=DAYS&&yw!==5&&yw!==6?DAILY+(DAILY-yt):0;
   return{missed,out:missed.length>=2,warn:missed.length===1,owe}
 }
 function updTot(){const n=k=>Math.max(0,parseInt($(k).value)||0);const t=n('inP')+n('inS')+n('inQ');
@@ -313,7 +315,7 @@ function renderCards(){
   const T=todayIdx();
   $('cards').innerHTML=players.map(p=>{const s=statsOf(p);
     const st=statusOf(p);return `<div class="pc${st.out?' out':st.warn?' warned':''}"><h3>${esc(p.name)}<span>${st.out?'עף מהאתגר ✕':st.warn?'אזהרה':s.full+'/100'}</span></h3><div class="grid">${Array.from({length:DAYS},(_,i)=>{const d=i+1,v=val(p,d);
-      let c=v.t>=DAILY?'full':v.t?'part':d<T?'miss':'';
+      const w=dateOf(d).getDay(),pend=(w===5||w===6)&&d+(w===5?2:1)>=T;let c=v.t>=DAILY?'full':v.t?'part':d<T&&!pend?'miss':'';
       if(d===T)c+=' today';if(p.id===sel&&d===edDay)c+=' sel';
       return `<button class="sq ${c}" data-p="${esc(p.id)}" data-d="${d}" aria-label="${esc(p.name)} יום ${d}: ${v.t} חזרות">${d}</button>`}).join('')}</div></div>`}).join('');
 }
