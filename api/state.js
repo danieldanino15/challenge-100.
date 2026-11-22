@@ -15,6 +15,7 @@ export default async function handler(req, res) {
         name: players[id].name,
         order: players[id].order,
         hasPin: !!players[id].pinHash,
+        profile: players[id].profile || null,
         log: logs[i] || {},
       }))
       .sort((a, b) => a.order - b.order);
