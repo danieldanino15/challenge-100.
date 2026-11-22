@@ -1,8 +1,8 @@
-import { redis, getPlayers, sendJson } from '../lib/store.js';
+import { redis, getPlayers, sendJson, dbEnvNames } from '../lib/store.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return sendJson(res, 405, { error: 'method' });
-  if (!redis) return sendJson(res, 500, { error: 'no_database' });
+  if (!redis) return sendJson(res, 500, { error: 'no_database', found: dbEnvNames });
   try {
     const players = await getPlayers();
     const ids = Object.keys(players);
