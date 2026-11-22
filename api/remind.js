@@ -26,8 +26,12 @@ function isOut(log, T) {
 }
 
 export default async function handler(req, res) {
+  // With CRON_SECRET set, Vercel sends it and we require it. Without it, accept only Vercel's own cron runner.
   const secret = process.env.CRON_SECRET;
-  if (!secret || req.headers.authorization !== `Bearer ${secret}`) return sendJson(res, 401, { error: 'unauthorized' });
+  const ok = secret
+    ? req.headers.authorization === `Bearer ${secret}`
+    : /^vercel-cron\//.test(req.headers['user-agent'] || '');
+  if (!ok) return sendJson(res, 401, { error: 'unauthorized' });
   if (!redis) return sendJson(res, 500, { error: 'no_database' });
   if (!pushReady()) return sendJson(res, 500, { error: 'no_vapid_key' });
 
