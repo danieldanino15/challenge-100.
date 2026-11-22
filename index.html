@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>אתגר 100 ימים</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="אתגר 100">
+<meta name="theme-color" content="#e3362a">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;900&family=Heebo:wght@400;500;700&display=swap" rel="stylesheet">
@@ -111,6 +116,11 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
 .jump{display:inline-block;margin-top:14px;font-weight:700;color:var(--red-d);text-decoration:none;padding:10px 0;min-height:44px}
 .rules li.hot{background:var(--red);border-color:var(--red);color:#fff;font-weight:900}
 .rules li.hot::before{background:#fff;color:var(--red)}
+.remind{margin-top:14px}
+.bell{font:700 16px Rubik;width:100%;min-height:50px;border:2px dashed var(--ink);background:transparent;color:var(--ink);border-radius:14px;cursor:pointer}
+.bell.on{border-style:solid;background:var(--card)}
+.stk .cap{background:#fff;color:var(--red);font:900 clamp(28px,7vw,44px)/1.15 Rubik,sans-serif;padding:26px 28px;border-radius:26px;box-shadow:0 0 0 8px #fff,0 0 0 11px var(--red),0 18px 40px rgba(0,0,0,.35);max-width:min(86vw,460px);text-align:center;text-wrap:balance;animation:pop .65s cubic-bezier(.2,1.6,.4,1) both}
+.stk .cap[hidden],.stk img[hidden]{display:none}
 @media(max-width:600px){.hero h1{font-size:30px}.day{font-size:64px}.track{display:none}.score{grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center}.day small{font-size:13px}.meta{font-size:13px;margin-top:0;flex-direction:column;gap:2px}.ex{gap:10px}.box{padding:12px}.row input{font-size:28px;min-height:50px}.quick button{padding:6px 9px;font-size:14px}.p{grid-template-columns:1fr;gap:10px}.track{gap:3px}}
 @media(prefers-reduced-motion:reduce){.bar .f i{transition:none}}
 </style>
@@ -128,7 +138,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
   </div>
 </div></header>
 
-<div class="stk" id="stk" hidden role="dialog" aria-label="כולך מלך"><img src="sticker.webp" alt="כולך מלךךךך"></div>
+<div class="stk" id="stk" hidden role="dialog" aria-live="polite"><img id="stkImg" src="sticker.webp" alt="כולך מלךךךך"><div class="cap" id="stkCap" hidden></div></div>
 <main>
 <section class="band logband"><div class="wrap">
   <h2 id="logTitle">מה עשית היום?</h2>
@@ -151,6 +161,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
     <button class="save" id="save" disabled>שמור</button>
     <div class="note" id="note" role="status"></div>
   </div>
+  <div class="remind"><button class="bell" id="bell" type="button">תזכיר לי ב-18:00 אם לא תיעדתי</button><div class="note" id="bellNote" role="status"></div></div>
   <a class="jump" href="#progress">לטבלה ולהתקדמות של כולם ↓</a>
 </div></section>
 
@@ -255,14 +266,14 @@ function renderCards(){
       if(d===T)c+=' today';if(p.id===sel&&d===edDay)c+=' sel';
       return `<button class="sq ${c}" data-p="${esc(p.id)}" data-d="${d}" aria-label="${esc(p.name)} יום ${d}: ${v.p} שכיבות, ${v.s} בטן">${d}</button>`}).join('')}</div></div>`}).join('');
 }
-function renderAll(keepEditor){renderHero();renderWho();renderBoard();renderCards();if(!keepEditor)loadEditor()}
+function renderAll(keepEditor){renderHero();renderWho();renderBoard();renderCards();if(typeof renderBell==='function')renderBell();if(!keepEditor)loadEditor()}
 
 async function refresh(){
   try{const j=await api('/api/state');players=j.players||[];loaded=true;renderAll(dirty)}
   catch(e){if(!loaded)$('board').innerHTML='<div class="empty">לא ניתן לטעון את הנתונים כרגע. נסה לרענן.</div>'}
 }
 
-$('who').addEventListener('change',e=>{sel=e.target.value;store.set('c100who',sel);renderCards();loadEditor()});
+$('who').addEventListener('change',e=>{sel=e.target.value;store.set('c100who',sel);renderCards();loadEditor();renderBell();$('bellNote').textContent=''});
 $('prev').addEventListener('click',()=>{if(edDay>1){edDay--;renderCards();loadEditor()}});
 $('next').addEventListener('click',()=>{if(edDay<DAYS){edDay++;renderCards();loadEditor()}});
 $('cards').addEventListener('click',e=>{const b=e.target.closest('.sq');if(!b)return;sel=b.dataset.p;edDay=+b.dataset.d;store.set('c100who',sel);renderWho();renderCards();loadEditor();$('logTitle').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})});
@@ -270,8 +281,35 @@ document.querySelectorAll('.quick').forEach(q=>q.addEventListener('click',e=>{co
   inp.value=b.dataset.set?b.dataset.set:Math.max(0,(+inp.value||0)+ +b.dataset.v);dirty=true;$('save').disabled=!sel}));
 ['inP','inS'].forEach(id=>$(id).addEventListener('input',()=>{dirty=true;$('save').disabled=!sel}));
 
-function showSticker(){const s=$('stk');s.hidden=false;clearTimeout(showSticker.t);showSticker.t=setTimeout(()=>{s.hidden=true},2800)}
+const CAPS=["הקיץ הזה אנשים ירצו ללקק ממך טחינה", "במרץ אתה הולך להיות חטוב כמו גיי תל אביבי", "עוד שבוע כזה והחולצות שלך יבקשו מידה קטנה יותר", "הרצפה כבר מכירה אותך בשם", "עוד קצת והמראה תבקש סלפי איתך", "סחבה? אתה? לא היום", "הספה מתגעגעת. שתתגעגע", "עוד יום ביומן, עוד מסמר בארון של הכרס", "ככה נראה מי שלא נופל ראשון", "הגוף אומר די, המילה אומרת עוד", "מילה של גבר. וזהו", "החולצה הצמודה כבר בדרך אליך", "הים בקיץ? הוא עוד לא מוכן אליך", "המאמן הפרטי שלך התפטר. אין לו מה לתקן", "הקוביות בבטן כבר שלחו הודעה: אנחנו בדרך", "אתה לא עושה את האתגר. אתה האתגר", "עוד יום שהעצלות הפסידה בנוקאאוט", "כולם מחפשים תירוצים. אתה מחפש עוד סט", "שכיבות סמיכה: 1. תירוצים: 0", "גם הכרס הבינה שהיא בצרות", "בקיץ ישאלו באיזה מכון אתה. תגיד: הסלון", "עוד קצת וזה כבר לא אתגר, זה אופי", "נשרף עוד יום. נשאר הגבר", "השאר עוד מתווכחים עם השעון המעורר. אתה כבר סגרת יום", "חבר'ה בקבוצה מתחילים לדאוג. ובצדק", "עוד 100 כאלה ותצטרך לחתום חתימות בחוף", "הכתפיים שלך מבקשות דלת רחבה יותר", "גם החזה כבר מתחיל לדבר בשם עצמו", "שלושה חודשים מעכשיו, אף אחד לא יזהה אותך בבריכה", "תמשיך ככה ותצטרך להחליף את תמונת הפרופיל", "הבטן אמרה שלום. הקוביות אמרו נעים מאוד", "היום עשית. מחר עושים שוב"];
+function showSticker(){const s=$('stk');let i;do{i=Math.floor(Math.random()*(CAPS.length+3))}while(i===showSticker.last&&CAPS.length>1);showSticker.last=i;
+  const useImg=i>=CAPS.length;$('stkImg').hidden=!useImg;$('stkCap').hidden=useImg;if(!useImg)$('stkCap').textContent=CAPS[i];
+  s.hidden=false;clearTimeout(showSticker.t);showSticker.t=setTimeout(()=>{s.hidden=true},useImg?2800:3800)}
 $('stk').addEventListener('click',()=>{$('stk').hidden=true});
+
+const VAPID='BPvqVNj_898n5yIEuxSAc2ikF-Q2XjqkvWMvq4H2X6YoSyDkNecdG85bexwZ3h_znT0SOBl-nzSw-6tFFt4JuXo';
+const b64=s=>{const p='='.repeat((4-s.length%4)%4),r=atob((s+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(r,c=>c.charCodeAt(0))};
+const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent),standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+let swReg=null;
+if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').then(r=>{swReg=r}).catch(()=>{});
+function renderBell(){const on=store.get('c100bell',null)===sel&&typeof Notification!=='undefined'&&Notification.permission==='granted';
+  $('bell').classList.toggle('on',on);$('bell').textContent=on?'תזכורת ב-18:00 פעילה ✓':'תזכיר לי ב-18:00 אם לא תיעדתי'}
+$('bell').addEventListener('click',async()=>{
+  const n=$('bellNote');
+  if(!sel){n.textContent='קודם בחר את השם שלך.';return}
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)||typeof Notification==='undefined'){
+    n.textContent=isIOS&&!standalone?'באייפון: לחץ על כפתור השיתוף ← "הוסף למסך הבית", פתח את האתר מהאייקון ולחץ כאן שוב.':'הדפדפן הזה לא תומך בהתראות. נסה בכרום.';return}
+  try{
+    const perm=await Notification.requestPermission();
+    if(perm!=='granted'){n.textContent='לא אישרת התראות. אפשר לאשר בהגדרות הדפדפן ולנסות שוב.';return}
+    const reg=swReg||await navigator.serviceWorker.ready;
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64(VAPID)});
+    await api('/api/subscribe',{id:sel,sub:sub.toJSON()});
+    store.set('c100bell',sel);renderBell();
+    const p=players.find(x=>x.id===sel);n.textContent=`מעולה${p?', '+p.name:''}. אם עד 18:00 לא תתעד, תקבל תזכורת.`;
+  }catch(e){n.textContent='ההרשמה לתזכורות לא הצליחה, נסה שוב.'}
+});
 $('save').addEventListener('click',async()=>{
   const p=players.find(x=>x.id===sel);if(!p)return;
   const pin=$('pin').value.trim();
