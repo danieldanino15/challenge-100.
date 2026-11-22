@@ -7,6 +7,8 @@ export default async function handler(req, res) {
     const players = await getPlayers();
     const ids = Object.keys(players);
     const logs = await Promise.all(ids.map(id => redis.hgetall(`log:${id}`)));
+    const betsRaw = (await redis.hgetall('bets')) || {};
+    const bets = Object.fromEntries(Object.entries(betsRaw).filter(([v, b]) => players[v] && b && players[b.target]).map(([v, b]) => [v, b.target]));
     const list = ids
       .map((id, i) => ({
         id,
@@ -16,7 +18,7 @@ export default async function handler(req, res) {
         log: logs[i] || {},
       }))
       .sort((a, b) => a.order - b.order);
-    sendJson(res, 200, { players: list });
+    sendJson(res, 200, { players: list, bets });
   } catch (e) {
     console.error(e);
     sendJson(res, 500, { error: 'server' });

@@ -1,5 +1,6 @@
 import { redis, getPlayers, checkPin, sendJson } from '../lib/store.js';
-import { todayIdx, isOut, DAILY } from '../lib/rules.js';
+import { todayIdx, isOut, DAILY, fullDays, MILESTONES } from '../lib/rules.js';
+import { pushToAll } from '../lib/push.js';
 
 const int = (v, min, max) => Number.isInteger(v) && v >= min && v <= max;
 
@@ -31,7 +32,19 @@ export default async function handler(req, res) {
       : `${name} תיעד/ה יום ${day}: ${tot} מתוך ${DAILY}${parts ? ` (${parts})` : ''}`;
     const mid = `log-${id}-${day}`;
     await redis.hset('chat', { [mid]: { mid, pid: id, name, text, auto: true, hasImg: false, ts: Date.now() } });
-    sendJson(res, 200, { ok: true });
+
+    // Milestones (25/50/75/100 full days): once per person — chat post + a notification to everyone.
+    const full = fullDays({ ...log, [day]: { p, s, q, m } });
+    const done = players[id].ms || [];
+    const hit = Object.keys(MILESTONES).map(Number).filter(n => full >= n && !done.includes(n)).pop();
+    if (hit) {
+      const reached = Object.keys(MILESTONES).map(Number).filter(n => full >= n);
+      await redis.hset('players', { [id]: { ...players[id], ms: reached } });
+      const msg = `🎉 ${name} ${hit === 100 ? 'סיים/ה את האתגר! 100 ימים מלאים' : `עבר/ה את ${MILESTONES[hit]}: ${hit} ימים מלאים`}`;
+      await redis.hset('chat', { [`ms-${id}-${hit}`]: { mid: `ms-${id}-${hit}`, pid: id, name, text: msg, auto: true, hasImg: false, ts: Date.now() + 1 } });
+      await pushToAll(redis, Object.keys(players), { title: 'אתגר 100 ימים', body: msg, url: '/' }, id);
+    }
+    sendJson(res, 200, { ok: true, milestone: hit || null });
   } catch (e) {
     console.error(e);
     sendJson(res, 500, { error: 'server' });
