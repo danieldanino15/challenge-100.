@@ -29,7 +29,12 @@ export default async function handler(req, res) {
     }
     const old = players[id].profile || {};
     let photoV = old.photoV || null;
-    if (photo) { await redis.hset('avatars', { [id]: photo }); photoV = Date.now(); }
+    if (photo) {
+      await redis.hset('avatars', { [id]: photo }); photoV = Date.now();
+      const nm = name || players[id].name;
+      const mid = `pic-${id}-${photoV}`;
+      await redis.hset('chat', { [mid]: { mid, pid: id, name: nm, text: `📸 ${nm} העלה/תה תמונה חדשה לכרזה`, auto: true, avatarV: photoV, hasImg: false, ts: photoV } });
+    }
     else if (b.removePhoto) { await redis.hdel('avatars', id); photoV = null; }
     const profile = { age, status, food: str(b.food, 60), nick: str(b.nick, 40), photoV };
     await redis.hset('players', { [id]: { ...players[id], name: name || players[id].name, profile } });

@@ -133,7 +133,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
 .chat{background:var(--card);border-radius:18px;padding:14px}
 .feed{max-height:520px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:4px}
 .msg{background:var(--bg);border-radius:14px;padding:10px 12px;max-width:85%;align-self:flex-start}
-.msg.auto{align-self:center;max-width:100%;background:transparent;border:2px solid var(--line);text-align:center;font-weight:700;font-size:15px}.msg.auto p{margin:0}.msg.auto time{display:block;color:var(--mute);font:400 12px Heebo;margin-top:2px}
+.msg.auto{align-self:center;max-width:100%;background:transparent;border:2px solid var(--line);text-align:center;font-weight:700;font-size:15px}.msg.auto p{margin:0}.msg .apic{display:block;margin:8px auto 0;width:160px;aspect-ratio:4/5;object-fit:cover;border-radius:10px}.msg.auto time{display:block;color:var(--mute);font:400 12px Heebo;margin-top:2px}
 .msg.me{align-self:flex-end;background:light-dark(#fde2df,#3a1714)}
 .msg .who{font:700 14px Rubik;color:var(--red-d);display:flex;gap:8px;justify-content:space-between}
 .msg .who time{color:var(--mute);font:400 12px Heebo}
@@ -147,7 +147,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
 .composer textarea{width:100%;font:16px Heebo;border:2px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--bg);color:var(--ink);resize:vertical}
 .crow{display:flex;gap:8px}
 .pic{flex:1;display:grid;place-items:center;min-height:48px;border:2px solid var(--ink);border-radius:12px;font-weight:700;cursor:pointer}
-.send{flex:2;font:700 17px Rubik;min-height:48px;border:0;border-radius:12px;background:var(--ink);color:var(--bg);cursor:pointer}
+.send{flex:1;font:700 17px Rubik;min-height:48px;border:0;border-radius:12px;background:var(--ink);color:var(--bg);cursor:pointer}
 .send:disabled{opacity:.5}
 .prev{position:relative;width:120px}.prev img{width:120px;height:120px;object-fit:cover;border-radius:12px;display:block}
 .prev button{position:absolute;top:4px;inset-inline-end:4px;width:32px;height:32px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;cursor:pointer}
@@ -289,12 +289,11 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
 <section class="band" style="padding-top:0" id="chat"><div class="wrap">
   <h2>הצ'אט של האתגר</h2>
   <div class="chat">
-    <div class="feed" id="feed"><div class="empty">עוד אין הודעות. תהיה הראשון להעלות תמונה מהאימון.</div></div>
+    <div class="feed" id="feed"><div class="empty">עוד אין הודעות. תהיה הראשון לכתוב.</div></div>
     <form class="composer" id="chatForm">
-      <div class="prev" id="imgPrev" hidden><img id="imgPrevImg" alt="התמונה שנבחרה"><button type="button" id="imgClear" aria-label="הסר תמונה">✕</button></div>
       <textarea id="chatText" rows="2" maxlength="500" placeholder="כתוב משהו לחבר'ה…" aria-label="הודעה"></textarea>
       <div class="as" id="chatAs"></div>
-      <div class="crow"><label class="pic">תמונה<input type="file" id="chatImg" accept="image/*" hidden></label><button type="submit" class="send" id="chatSend">שלח</button></div>
+      <div class="crow"><button type="submit" class="send" id="chatSend">שלח</button></div>
       <div class="note" id="chatNote" role="status"></div>
     </form>
   </div>
@@ -465,7 +464,7 @@ $('prof').addEventListener('submit',async e=>{if(e.target.id!=='profForm')return
   const profile={name:f.get('name'),nick:f.get('nick'),age:f.get('age'),status:f.get('status'),food:f.get('food'),removePhoto:!!f.get('removePhoto')};
   const file=f.get('photo');n.textContent='שומר…';
   if(file&&file.size){try{profile.photo=await shrink(file)}catch(x){n.textContent='לא הצלחתי לפתוח את התמונה.';return}}
-  try{await api('/api/profile',{id:pid,pin,profile});pins[pid]=pin;store.set('c100pins',pins);sel=pid;lockMe();await refresh();openProfile(pid);$('profNote')&&($('profNote').textContent='נשמר.')}
+  try{await api('/api/profile',{id:pid,pin,profile});pins[pid]=pin;store.set('c100pins',pins);sel=pid;lockMe();await refresh();loadChat();openProfile(pid);$('profNote')&&($('profNote').textContent='נשמר.')}
   catch(err){n.textContent=err.msg==='name_taken'?'השם הזה כבר תפוס.':err.msg==='bad_age'?'גיל לא תקין.':err.status===403?'הקוד לא נכון.':'השמירה לא הצליחה.'}});
 const av=(p,cls='')=>p&&p.profile&&p.profile.photoV?`<img class="av ${cls}" src="/api/img?avatar=${encodeURIComponent(p.id)}&v=${p.profile.photoV}" alt="" loading="lazy">`:'';
 const byId=id=>players.find(x=>x.id===id);
@@ -592,10 +591,10 @@ $('addForm').addEventListener('submit',async e=>{e.preventDefault();const name=$
 let chatMsgs=[],chatImg=null,chatSig='';
 const tfmt=ts=>{const d=new Date(ts),t=new Date();const hm=d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});return d.toDateString()===t.toDateString()?hm:d.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'})+' '+hm};
 function renderChat(){
-  const f=$('feed');if(!chatMsgs.length){f.innerHTML='<div class="empty">עוד אין הודעות. תהיה הראשון להעלות תמונה מהאימון.</div>';return}
+  const f=$('feed');if(!chatMsgs.length){f.innerHTML='<div class="empty">עוד אין הודעות. תהיה הראשון לכתוב.</div>';return}
   const sig=chatMsgs.map(m=>m.mid+m.ts).join()+players.map(p=>p.id+(p.profile&&p.profile.photoV||'')).join();if(sig===chatSig)return;
   const atBottom=f.scrollHeight-f.scrollTop-f.clientHeight<60||!chatSig;chatSig=sig;
-  f.innerHTML=chatMsgs.map(m=>m.auto?`<div class="msg auto"><p>${esc(m.text)}</p><time>${tfmt(m.ts)}</time></div>`:`<div class="msg${m.pid===sel?' me':''}"><div class="who"><span style="display:flex;align-items:center">${av(byId(m.pid))}${esc((byId(m.pid)||m).name)}</span><time>${tfmt(m.ts)}</time></div>${m.text?`<p>${esc(m.text)}</p>`:''}${m.hasImg?`<img loading="lazy" src="/api/img?id=${encodeURIComponent(m.mid)}" alt="תמונה מ${esc(m.name)}">`:''}</div>`).join('');
+  f.innerHTML=chatMsgs.map(m=>m.auto?`<div class="msg auto"><p>${esc(m.text)}</p>${m.avatarV?`<img class="apic" loading="lazy" src="/api/img?avatar=${encodeURIComponent(m.pid)}&v=${m.avatarV}" alt="">`:''}<time>${tfmt(m.ts)}</time></div>`:`<div class="msg${m.pid===sel?' me':''}"><div class="who"><span style="display:flex;align-items:center">${av(byId(m.pid))}${esc((byId(m.pid)||m).name)}</span><time>${tfmt(m.ts)}</time></div>${m.text?`<p>${esc(m.text)}</p>`:''}${m.hasImg?`<img loading="lazy" src="/api/img?id=${encodeURIComponent(m.mid)}" alt="תמונה מ${esc(m.name)}">`:''}</div>`).join('');
   if(atBottom)f.scrollTop=f.scrollHeight;
 }
 async function loadChat(){try{const j=await api('/api/chat');chatMsgs=j.messages||[];renderChat()}catch(e){}}
@@ -608,21 +607,15 @@ async function shrink(file){
       out=c.toDataURL('image/jpeg',q);if(out.length<560000)break;max*=.8;q-=.08}
     return out}finally{URL.revokeObjectURL(url)}
 }
-$('chatImg').addEventListener('change',async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;
-  $('chatNote').textContent='מכין תמונה…';
-  try{chatImg=await shrink(f);$('imgPrevImg').src=chatImg;$('imgPrev').hidden=false;$('chatNote').textContent=''}
-  catch(err){chatImg=null;$('chatNote').textContent='לא הצלחתי לפתוח את התמונה.'}
-  e.target.value=''});
-$('imgClear').addEventListener('click',()=>{chatImg=null;$('imgPrev').hidden=true});
 $('chatForm').addEventListener('submit',async e=>{e.preventDefault();
   const text=$('chatText').value.trim(),n=$('chatNote');
-  if(!text&&!chatImg){n.textContent='כתוב משהו או בחר תמונה.';return}
+  if(!text){n.textContent='כתוב/כתבי משהו.';return}
   if(!sel){n.textContent='קודם בחר את השם שלך ב"מי אתה?" למעלה. חדש/ה? הצטרף/י בתחתית הדף.';return}
   const pin=pins[sel]||$('pin').value.trim();
   if(!/^\d{4}$/.test(pin)){n.textContent='תכניס את הקוד האישי שלך בתיבת התיעוד למעלה, ואז שלח.';return}
   $('chatSend').disabled=true;n.textContent='שולח…';
-  try{await api('/api/chat',{id:sel,pin,text,img:chatImg});pins[sel]=pin;store.set('c100pins',pins);lockMe();
-    $('chatText').value='';chatImg=null;$('imgPrev').hidden=true;n.textContent='';chatSig='';await loadChat();$('feed').scrollTop=$('feed').scrollHeight}
+  try{await api('/api/chat',{id:sel,pin,text});pins[sel]=pin;store.set('c100pins',pins);lockMe();
+    $('chatText').value='';n.textContent='';chatSig='';await loadChat();$('feed').scrollTop=$('feed').scrollHeight}
   catch(err){n.textContent=err.status===403?'הקוד לא נכון.':err.msg==='bad_image'?'התמונה גדולה מדי, נסה אחרת.':'השליחה לא הצליחה, נסה שוב.'}
   $('chatSend').disabled=false});
 {const T=todayIdx();edDay=Math.max(1,Math.min(DAYS,T))}
