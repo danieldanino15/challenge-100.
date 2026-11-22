@@ -132,6 +132,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
 .chat{background:var(--card);border-radius:18px;padding:14px}
 .feed{max-height:520px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:4px}
 .msg{background:var(--bg);border-radius:14px;padding:10px 12px;max-width:85%;align-self:flex-start}
+.msg.auto{align-self:center;max-width:100%;background:transparent;border:2px solid var(--line);text-align:center;font-weight:700;font-size:15px}.msg.auto p{margin:0}.msg.auto time{display:block;color:var(--mute);font:400 12px Heebo;margin-top:2px}
 .msg.me{align-self:flex-end;background:light-dark(#fde2df,#3a1714)}
 .msg .who{font:700 14px Rubik;color:var(--red-d);display:flex;gap:8px;justify-content:space-between}
 .msg .who time{color:var(--mute);font:400 12px Heebo}
@@ -390,7 +391,7 @@ $('save').addEventListener('click',async()=>{
   $('save').disabled=true;$('note').textContent='שומר…';
   try{await api('/api/log',{id:p.id,day:edDay,p:pv,s:sv,q:qv,m:mv,pin});
     pins[p.id]=pin;store.set('c100pins',pins);dirty=false;lockMe();showSticker();
-    p.log={...(p.log||{}),[edDay]:{p:pv,s:sv,q:qv,m:mv}};p.hasPin=true;renderAll(true);
+    p.log={...(p.log||{}),[edDay]:{p:pv,s:sv,q:qv,m:mv}};p.hasPin=true;renderAll(true);loadChat();
     $('note').textContent=tv>=DAILY?`${p.name} סגר את יום ${edDay} עם ${tv} חזרות. כל הכבוד.`:`נשמר: ${tv} חזרות ליום ${edDay}. חסרות עוד ${DAILY-tv}.`}
   catch(e){$('note').textContent=e.msg==='out'?'עפת מהאתגר. הכניסה שלך נחסמה.':e.status===403?'הקוד לא נכון. רק המשתתף עצמו יכול לעדכן את השורה שלו.':'השמירה לא הצליחה, נסה שוב.'}
   $('save').disabled=false;
@@ -408,9 +409,9 @@ let chatMsgs=[],chatImg=null,chatSig='';
 const tfmt=ts=>{const d=new Date(ts),t=new Date();const hm=d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});return d.toDateString()===t.toDateString()?hm:d.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'})+' '+hm};
 function renderChat(){
   const f=$('feed');if(!chatMsgs.length){f.innerHTML='<div class="empty">עוד אין הודעות. תהיה הראשון להעלות תמונה מהאימון.</div>';return}
-  const sig=chatMsgs.map(m=>m.mid).join();if(sig===chatSig)return;
+  const sig=chatMsgs.map(m=>m.mid+m.ts).join();if(sig===chatSig)return;
   const atBottom=f.scrollHeight-f.scrollTop-f.clientHeight<60||!chatSig;chatSig=sig;
-  f.innerHTML=chatMsgs.map(m=>`<div class="msg${m.pid===sel?' me':''}"><div class="who"><span>${esc(m.name)}</span><time>${tfmt(m.ts)}</time></div>${m.text?`<p>${esc(m.text)}</p>`:''}${m.hasImg?`<img loading="lazy" src="/api/img?id=${encodeURIComponent(m.mid)}" alt="תמונה מ${esc(m.name)}">`:''}</div>`).join('');
+  f.innerHTML=chatMsgs.map(m=>m.auto?`<div class="msg auto"><p>${esc(m.text)}</p><time>${tfmt(m.ts)}</time></div>`:`<div class="msg${m.pid===sel?' me':''}"><div class="who"><span>${esc(m.name)}</span><time>${tfmt(m.ts)}</time></div>${m.text?`<p>${esc(m.text)}</p>`:''}${m.hasImg?`<img loading="lazy" src="/api/img?id=${encodeURIComponent(m.mid)}" alt="תמונה מ${esc(m.name)}">`:''}</div>`).join('');
   if(atBottom)f.scrollTop=f.scrollHeight;
 }
 async function loadChat(){try{const j=await api('/api/chat');chatMsgs=j.messages||[];renderChat()}catch(e){}}

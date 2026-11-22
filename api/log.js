@@ -1,5 +1,5 @@
 import { redis, getPlayers, checkPin, sendJson } from '../lib/store.js';
-import { todayIdx, isOut } from '../lib/rules.js';
+import { todayIdx, isOut, DAILY } from '../lib/rules.js';
 
 const int = (v, min, max) => Number.isInteger(v) && v >= min && v <= max;
 
@@ -20,6 +20,17 @@ export default async function handler(req, res) {
       if (isOut(log, todayIdx())) return sendJson(res, 403, { error: 'out' });
     }
     await redis.hset(`log:${id}`, { [day]: { p, s, q, m } });
+
+    // Post the log to the group chat (one message per person per day; a re-save updates it).
+    const parts = [['שכיבות סמיכה', p], ['כפיפות בטן', s], ['סקוואט', q], ['מתח', m]]
+      .filter(([, n]) => n > 0).map(([label, n]) => `${label} ${n}`).join(' · ');
+    const tot = p + s + q + m;
+    const name = players[id].name;
+    const text = tot >= DAILY
+      ? `✅ ${name} סגר/ה את יום ${day} עם ${tot} חזרות${parts ? ` (${parts})` : ''}`
+      : `${name} תיעד/ה יום ${day}: ${tot} מתוך ${DAILY}${parts ? ` (${parts})` : ''}`;
+    const mid = `log-${id}-${day}`;
+    await redis.hset('chat', { [mid]: { mid, pid: id, name, text, auto: true, hasImg: false, ts: Date.now() } });
     sendJson(res, 200, { ok: true });
   } catch (e) {
     console.error(e);
