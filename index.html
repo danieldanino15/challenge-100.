@@ -138,6 +138,10 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
 .msg p{margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
 .msg img{display:block;margin-top:6px;max-width:100%;max-height:360px;border-radius:10px;object-fit:cover}
 .composer{margin-top:12px;display:grid;gap:8px}
+.as{font-size:14px;color:var(--mute);font-weight:700}
+.meline{font-size:17px;margin-bottom:14px;display:flex;flex-wrap:wrap;align-items:center;gap:8px}.meline b{font-family:Rubik}
+.meline button{font:500 14px Heebo;background:none;border:0;color:var(--red-d);text-decoration:underline;cursor:pointer;min-height:44px;padding:0 6px}
+#pickWrap[hidden],.meline[hidden]{display:none}
 .composer textarea{width:100%;font:16px Heebo;border:2px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--bg);color:var(--ink);resize:vertical}
 .crow{display:flex;gap:8px}
 .pic{flex:1;display:grid;place-items:center;min-height:48px;border:2px solid var(--ink);border-radius:12px;font-weight:700;cursor:pointer}
@@ -170,8 +174,9 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
   <h2 id="logTitle">מה עשית היום?</h2>
   <div class="log">
     <div class="warn" id="alert" hidden style="margin:0 0 14px"></div>
-    <label class="wholbl" for="who">מי אתה?</label>
-    <select id="who" class="whosel"></select>
+    <div id="pickWrap"><label class="wholbl" for="who">מי אתה?</label>
+    <select id="who" class="whosel"></select></div>
+    <div class="meline" id="meLine" hidden></div>
     <div class="dayline"><button class="step" id="prev" aria-label="יום קודם">›</button><span>יום <b id="edDay">1</b> · <span id="edDate"></span></span><button class="step" id="next" aria-label="יום הבא">‹</button></div>
     <div class="ex">
       <div class="box"><label for="inP">שכיבות סמיכה</label>
@@ -208,6 +213,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
     <form class="composer" id="chatForm">
       <div class="prev" id="imgPrev" hidden><img id="imgPrevImg" alt="התמונה שנבחרה"><button type="button" id="imgClear" aria-label="הסר תמונה">✕</button></div>
       <textarea id="chatText" rows="2" maxlength="500" placeholder="כתוב משהו לחבר'ה…" aria-label="הודעה"></textarea>
+      <div class="as" id="chatAs"></div>
       <div class="crow"><label class="pic">תמונה<input type="file" id="chatImg" accept="image/*" hidden></label><button type="submit" class="send" id="chatSend">שלח</button></div>
       <div class="note" id="chatNote" role="status"></div>
     </form>
@@ -226,7 +232,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
 </div></section>
 
 <section class="band" style="padding-top:0"><div class="wrap">
-  <h2>מצטרף חדש לאתגר</h2>
+  <h2 id="join">מצטרף חדש לאתגר</h2>
   <p style="margin:0 0 14px;color:var(--mute)">שם וקוד אישי של 4 ספרות. רק מי שיודע את הקוד יכול לעדכן את השורה שלך.</p>
   <form class="add" id="addForm"><input id="addName" maxlength="40" placeholder="השם שלך" aria-label="השם שלך"><input id="addPin" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" placeholder="קוד 4 ספרות" aria-label="קוד אישי" style="flex:0 1 160px"><button type="submit">אני בפנים</button></form>
   <div class="status" id="status"></div>
@@ -243,7 +249,8 @@ const dateOf=d=>{const x=new Date(START);x.setDate(x.getDate()+d-1);return x};
 const dstr=d=>dateOf(d).toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'numeric'});
 const todayIdx=()=>{const n=new Date();const t=new Date(n.getFullYear(),n.getMonth(),n.getDate());return Math.round((t-START)/864e5)+1};
 const store={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
-let players=[], sel=store.get('c100who',null), edDay=1, dirty=false, loaded=false;
+let me=store.get('c100me',null), players=[], sel=me||null, edDay=1, dirty=false, loaded=false;
+const lockMe=()=>{if(sel&&me!==sel){me=sel;store.set('c100me',me);renderWho();renderAs()}};
 const pins=store.get('c100pins',{});
 
 const val=(p,d)=>{const e=(p.log||{})[d]||{};const v={p:+e.p||0,s:+e.s||0,q:+e.q||0,has:e.p!=null||e.s!=null||e.q!=null};v.t=v.p+v.s+v.q;return v};
@@ -285,8 +292,11 @@ function renderHero(){
   $('meta').innerHTML=`<span>סיום: <b>${dateOf(DAYS).toLocaleDateString('he-IL')}</b></span><span>נשארו: <b>${Math.max(0,Math.min(DAYS,DAYS-T+1))}</b> ימים</span><span>כל הקבוצה: <b>${fmt(gt)}</b> חזרות</span>`;
 }
 function renderWho(){
-  if(!players.find(p=>p.id===sel))sel=players[0]?.id||null;
-  $('who').innerHTML=players.length?players.map(p=>{const st=statusOf(p);return `<option value="${esc(p.id)}"${p.id===sel?' selected':''}>${esc(p.name)}${st.out?' ✕ (בחוץ)':st.warn?' ⚠ (אזהרה)':''}</option>`}).join(''):'<option value="">עוד אין משתתפים</option>';
+  const mp=me&&players.find(x=>x.id===me);if(me&&loaded&&!mp){me=null;store.set('c100me',null)}
+  if(mp){sel=me;$('pickWrap').hidden=true;$('meLine').hidden=false;$('meLine').innerHTML=`מתעד/ת בתור: <b>${esc(mp.name)}</b> <button type="button" id="switchMe">לא את/ה?</button>`;return}
+  $('pickWrap').hidden=false;$('meLine').hidden=true;
+  if(sel&&!players.find(p=>p.id===sel))sel=null;
+  $('who').innerHTML='<option value=""'+(sel?'':' selected')+'>בחר את השם שלך…</option>'+(players.length?players.map(p=>{const st=statusOf(p);return `<option value="${esc(p.id)}"${p.id===sel?' selected':''}>${esc(p.name)}${st.out?' ✕ (בחוץ)':st.warn?' ⚠ (אזהרה)':''}</option>`}).join(''):'')+'<option value="__new">+ אני חדש/ה באתגר, להצטרף</option>';
 }
 function loadEditor(){
   const p=players.find(x=>x.id===sel);
@@ -319,17 +329,21 @@ function renderCards(){
       if(d===T)c+=' today';if(p.id===sel&&d===edDay)c+=' sel';
       return `<button class="sq ${c}" data-p="${esc(p.id)}" data-d="${d}" aria-label="${esc(p.name)} יום ${d}: ${v.t} חזרות">${d}</button>`}).join('')}</div></div>`}).join('');
 }
-function renderAll(keepEditor){renderHero();renderWho();renderBoard();renderCards();if(typeof renderBell==='function')renderBell();if(!keepEditor)loadEditor()}
+function renderAs(){const p=players.find(x=>x.id===sel);const a=$('chatAs');if(a)a.textContent=p?`שולח/ת בתור: ${p.name}`:'כדי לכתוב, בחר/י את השם שלך ב"מי אתה?" למעלה.'}
+function renderAll(keepEditor){renderAs();renderHero();renderWho();renderBoard();renderCards();if(typeof renderBell==='function')renderBell();if(!keepEditor)loadEditor()}
 
 async function refresh(){
   try{const j=await api('/api/state');players=j.players||[];loaded=true;renderAll(dirty)}
   catch(e){if(!loaded)$('board').innerHTML='<div class="empty">לא ניתן לטעון את הנתונים כרגע. נסה לרענן.</div>'}
 }
 
-$('who').addEventListener('change',e=>{sel=e.target.value;store.set('c100who',sel);renderCards();loadEditor();renderBell();$('bellNote').textContent=''});
+$('who').addEventListener('change',()=>renderAs());
+$('meLine').addEventListener('click',e=>{if(e.target.id!=='switchMe')return;
+  if(e.target.dataset.sure){me=null;sel=null;store.set('c100me',null);$('pin').value='';renderAll()}else{e.target.dataset.sure=1;e.target.textContent='לחץ/י שוב כדי להחליף שם'}});
+$('who').addEventListener('change',e=>{if(e.target.value==='__new'){e.target.value=sel||'';$('join').scrollIntoView({behavior:'smooth'});$('addName').focus({preventScroll:true});return}sel=e.target.value||null;store.set('c100who',sel);renderCards();loadEditor();renderBell();$('bellNote').textContent=''});
 $('prev').addEventListener('click',()=>{if(edDay>1){edDay--;renderCards();loadEditor()}});
 $('next').addEventListener('click',()=>{if(edDay<DAYS){edDay++;renderCards();loadEditor()}});
-$('cards').addEventListener('click',e=>{const b=e.target.closest('.sq');if(!b)return;sel=b.dataset.p;edDay=+b.dataset.d;store.set('c100who',sel);renderWho();renderCards();loadEditor();$('logTitle').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})});
+$('cards').addEventListener('click',e=>{const b=e.target.closest('.sq');if(!b)return;if(me&&b.dataset.p!==me){$('note').textContent='אפשר לתעד רק לעצמך.';return}sel=b.dataset.p;edDay=+b.dataset.d;store.set('c100who',sel);renderWho();renderCards();loadEditor();$('logTitle').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})});
 document.querySelectorAll('.quick').forEach(q=>q.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const inp=$(q.dataset.for);
   inp.value=b.dataset.set?b.dataset.set:Math.max(0,(+inp.value||0)+ +b.dataset.v);dirty=true;updTot();$('save').disabled=!sel}));
 ['inP','inS','inQ'].forEach(id=>$(id).addEventListener('input',()=>{dirty=true;updTot();$('save').disabled=!sel}));
@@ -371,7 +385,7 @@ $('save').addEventListener('click',async()=>{
   const pv=num('inP'),sv=num('inS'),qv=num('inQ'),tv=pv+sv+qv;
   $('save').disabled=true;$('note').textContent='שומר…';
   try{await api('/api/log',{id:p.id,day:edDay,p:pv,s:sv,q:qv,pin});
-    pins[p.id]=pin;store.set('c100pins',pins);dirty=false;showSticker();
+    pins[p.id]=pin;store.set('c100pins',pins);dirty=false;lockMe();showSticker();
     p.log={...(p.log||{}),[edDay]:{p:pv,s:sv,q:qv}};p.hasPin=true;renderAll(true);
     $('note').textContent=tv>=DAILY?`${p.name} סגר את יום ${edDay} עם ${tv} חזרות. כל הכבוד.`:`נשמר: ${tv} חזרות ליום ${edDay}. חסרות עוד ${DAILY-tv}.`}
   catch(e){$('note').textContent=e.msg==='out'?'עפת מהאתגר. הכניסה שלך נחסמה.':e.status===403?'הקוד לא נכון. רק המשתתף עצמו יכול לעדכן את השורה שלו.':'השמירה לא הצליחה, נסה שוב.'}
@@ -380,7 +394,7 @@ $('save').addEventListener('click',async()=>{
 $('addForm').addEventListener('submit',async e=>{e.preventDefault();const name=$('addName').value.trim(),pin=$('addPin').value.trim();
   if(!name){$('status').textContent='צריך שם.';return}
   if(!/^\d{4}$/.test(pin)){$('status').textContent='צריך קוד אישי של 4 ספרות.';return}
-  try{const j=await api('/api/join',{name,pin});pins[j.id]=pin;store.set('c100pins',pins);sel=j.id;store.set('c100who',sel);
+  try{const j=await api('/api/join',{name,pin});pins[j.id]=pin;store.set('c100pins',pins);sel=j.id;lockMe();store.set('c100who',sel);
     $('addName').value='';$('addPin').value='';$('status').textContent=name+', ברוך הבא לאתגר.';await refresh();loadEditor()}
   catch(err){$('status').textContent=err.msg==='name_taken'?'השם הזה כבר באתגר.':'ההצטרפות לא הצליחה, נסה שוב.'}});
 
@@ -414,11 +428,11 @@ $('imgClear').addEventListener('click',()=>{chatImg=null;$('imgPrev').hidden=tru
 $('chatForm').addEventListener('submit',async e=>{e.preventDefault();
   const text=$('chatText').value.trim(),n=$('chatNote');
   if(!text&&!chatImg){n.textContent='כתוב משהו או בחר תמונה.';return}
-  if(!sel){n.textContent='קודם בחר את השם שלך למעלה.';return}
+  if(!sel){n.textContent='קודם בחר את השם שלך ב"מי אתה?" למעלה. חדש/ה? הצטרף/י בתחתית הדף.';return}
   const pin=pins[sel]||$('pin').value.trim();
   if(!/^\d{4}$/.test(pin)){n.textContent='תכניס את הקוד האישי שלך בתיבת התיעוד למעלה, ואז שלח.';return}
   $('chatSend').disabled=true;n.textContent='שולח…';
-  try{await api('/api/chat',{id:sel,pin,text,img:chatImg});pins[sel]=pin;store.set('c100pins',pins);
+  try{await api('/api/chat',{id:sel,pin,text,img:chatImg});pins[sel]=pin;store.set('c100pins',pins);lockMe();
     $('chatText').value='';chatImg=null;$('imgPrev').hidden=true;n.textContent='';chatSig='';await loadChat();$('feed').scrollTop=$('feed').scrollHeight}
   catch(err){n.textContent=err.status===403?'הקוד לא נכון.':err.msg==='bad_image'?'התמונה גדולה מדי, נסה אחרת.':'השליחה לא הצליחה, נסה שוב.'}
   $('chatSend').disabled=false});
