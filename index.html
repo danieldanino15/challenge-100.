@@ -210,7 +210,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
 .pnick{color:var(--red-d);font:700 17px Rubik;margin-bottom:12px}
 .pfacts{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 14px;margin:0}
 .pfacts dt{color:var(--mute)}.pfacts dd{margin:0;font-weight:700;overflow-wrap:anywhere}
-.pform{display:grid;gap:10px}.pform label{font-weight:700;display:grid;gap:4px}
+.pform{display:grid;gap:10px}.pform[hidden]{display:none}.pform label{font-weight:700;display:grid;gap:4px}
 .pform input,.pform select,.pform textarea{font:16px Heebo;border:2px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--bg);color:var(--ink);min-height:46px}
 .pform .send{margin-top:4px}
 @media(max-width:600px){.bets h2{font-size:18px}.htop{grid-template-columns:1fr;gap:14px}.fallen{padding:10px 14px}.fallen h2{font-size:17px}.ex{grid-template-columns:repeat(2,minmax(0,1fr))}.ex .box{padding:10px}.ex .box label{min-height:2.6em;display:flex;align-items:flex-end;line-height:1.25}.ex .quick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.ex .quick button{padding:6px 0}.jump b{font-size:48px}.jump span{font-size:14px}.ex .box label{font-size:14px}.row input{font-size:24px!important}.hero h1{font-size:30px}.day{font-size:64px}.track{display:none}.score{grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center}.day small{font-size:13px}.meta{font-size:13px;margin-top:0;flex-direction:column;gap:2px}.ex{gap:10px}.box{padding:12px}.row input{font-size:28px;min-height:50px}.quick button{padding:6px 9px;font-size:14px}.p{grid-template-columns:1fr;gap:10px}.track{gap:3px}}
@@ -442,7 +442,9 @@ function openProfile(id){const p=players.find(x=>x.id===id);if(!p)return;profFor
     <div class="pz-mid"><div class="pz-photo">${photo}</div>${side.length?`<div class="pz-side">${side.map(v=>`<span>${esc(v)}</span>`).join('<i aria-hidden="true">★</i>')}</div>`:''}</div>
     <div class="pz-bottom">${esc(bottom)}</div>
   </div>${!mine&&!p.profile?'<p class="note" style="text-align:center">עוד לא מילא/ה פרטים.</p>':''}`;
-  const form=mine?`<form class="pform" id="profForm"><h3 style="margin:16px 0 0">הפרטים שלי</h3>
+  const claim=!me;
+  const form=mine||claim?`${claim?'<button type="button" class="send" id="profClaim" style="margin-top:14px;width:100%">זה אני, לערוך את הכרטיס</button>':''}<form class="pform" id="profForm"${claim?' hidden':''}><h3 style="margin:16px 0 0">הפרטים שלי</h3>
+    ${pins[id]?'':'<label>הקוד האישי שלך<input name="pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off"></label>'}
     <label>תמונה לכרזה<input name="photo" type="file" accept="image/*"></label>
     ${pr.photoV?'<label style="display:flex;gap:8px;align-items:center;font-weight:500"><input type="checkbox" name="removePhoto" style="min-height:auto"> להסיר את התמונה</label>':''}
     <label>שם<input name="name" maxlength="40" value="${esc(p.name)}"></label>
@@ -455,15 +457,15 @@ function openProfile(id){const p=players.find(x=>x.id===id);if(!p)return;profFor
 }
 $('board').addEventListener('click',e=>{const b=e.target.closest('[data-prof]');if(b)openProfile(b.dataset.prof)});
 $('profClose').addEventListener('click',()=>{$('prof').hidden=true});
-$('prof').addEventListener('click',e=>{if(e.target.id==='prof')$('prof').hidden=true});
+$('prof').addEventListener('click',e=>{if(e.target.id==='prof')$('prof').hidden=true;if(e.target.id==='profClaim'){e.target.hidden=true;$('profForm').hidden=false}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')$('prof').hidden=true});
 $('prof').addEventListener('submit',async e=>{if(e.target.id!=='profForm')return;e.preventDefault();
-  const f=new FormData(e.target),n=$('profNote'),pin=pins[me];
-  if(!pin){n.textContent='חסר הקוד האישי שלך. תתעד/י פעם אחת ואז תוכל/י לשמור.';return}
+  const f=new FormData(e.target),n=$('profNote'),pid=profFor,pin=(f.get('pin')||pins[pid]||'').trim();
+  if(!/^\d{4}$/.test(pin)){n.textContent='צריך את הקוד האישי שלך (4 ספרות).';return}
   const profile={name:f.get('name'),nick:f.get('nick'),age:f.get('age'),status:f.get('status'),food:f.get('food'),removePhoto:!!f.get('removePhoto')};
   const file=f.get('photo');n.textContent='שומר…';
   if(file&&file.size){try{profile.photo=await shrink(file)}catch(x){n.textContent='לא הצלחתי לפתוח את התמונה.';return}}
-  try{await api('/api/profile',{id:me,pin,profile});await refresh();openProfile(me);$('profNote')&&($('profNote').textContent='נשמר.')}
+  try{await api('/api/profile',{id:pid,pin,profile});pins[pid]=pin;store.set('c100pins',pins);sel=pid;lockMe();await refresh();openProfile(pid);$('profNote')&&($('profNote').textContent='נשמר.')}
   catch(err){n.textContent=err.msg==='name_taken'?'השם הזה כבר תפוס.':err.msg==='bad_age'?'גיל לא תקין.':err.status===403?'הקוד לא נכון.':'השמירה לא הצליחה.'}});
 const av=(p,cls='')=>p&&p.profile&&p.profile.photoV?`<img class="av ${cls}" src="/api/img?avatar=${encodeURIComponent(p.id)}&v=${p.profile.photoV}" alt="" loading="lazy">`:'';
 const byId=id=>players.find(x=>x.id===id);
