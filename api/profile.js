@@ -22,7 +22,7 @@ export default async function handler(req, res) {
     if (name && Object.entries(players).some(([pid, p]) => pid !== id && (p.name || '').trim() === name)) {
       return sendJson(res, 409, { error: 'name_taken' });
     }
-    const profile = { age, status, food: str(b.food, 60), nick: str(b.nick, 40), fun: str(b.fun, 200) };
+    const profile = { age, status, food: str(b.food, 60), nick: str(b.nick, 40) };
     await redis.hset('players', { [id]: { ...players[id], name: name || players[id].name, profile } });
     sendJson(res, 200, { ok: true });
   } catch (e) {

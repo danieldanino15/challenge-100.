@@ -411,7 +411,7 @@ let profFor=null;
 function openProfile(id){const p=players.find(x=>x.id===id);if(!p)return;profFor=id;
   const pr=p.profile||{},mine=id===me,s=statsOf(p);
   $('profName').textContent=p.name;
-  const facts=[['גיל',pr.age],['מצב משפחתי',pr.status],['מאכל אהוב',pr.food],['משהו מצחיק',pr.fun],['ימים מלאים',s.full],['סה"כ חזרות',fmt(s.tt)]].filter(([,v])=>v!=null&&v!=='');
+  const facts=[['גיל',pr.age],['מצב משפחתי',pr.status],['מאכל אהוב',pr.food],['ימים מלאים',s.full],['סה"כ חזרות',fmt(s.tt)]].filter(([,v])=>v!=null&&v!=='');
   const view=`${pr.nick?`<div class="pnick">"${esc(pr.nick)}"</div>`:''}<dl class="pfacts">${facts.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>${!mine&&!p.profile?'<p class="note">עוד לא מילא/ה פרטים.</p>':''}`;
   const form=mine?`<form class="pform" id="profForm"><h3 style="margin:16px 0 0">הפרטים שלי</h3>
     <label>שם<input name="name" maxlength="40" value="${esc(p.name)}"></label>
@@ -419,7 +419,6 @@ function openProfile(id){const p=players.find(x=>x.id===id);if(!p)return;profFor
     <label>גיל<input name="age" type="number" inputmode="numeric" min="10" max="120" value="${pr.age??''}"></label>
     <label>מצב משפחתי<select name="status"><option value="">—</option>${STATUSES.map(x=>`<option${x===pr.status?' selected':''}>${x}</option>`).join('')}</select></label>
     <label>מאכל אהוב<input name="food" maxlength="60" value="${esc(pr.food||'')}"></label>
-    <label>משהו מצחיק עליי<textarea name="fun" rows="2" maxlength="200">${esc(pr.fun||'')}</textarea></label>
     <button class="send" type="submit">שמור פרטים</button><div class="note" id="profNote" role="status"></div></form>`:'';
   $('profBody').innerHTML=view+form;$('prof').hidden=false;$('profClose').focus();
 }
@@ -430,7 +429,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')$('prof').hidden=tru
 $('prof').addEventListener('submit',async e=>{if(e.target.id!=='profForm')return;e.preventDefault();
   const f=new FormData(e.target),n=$('profNote'),pin=pins[me];
   if(!pin){n.textContent='חסר הקוד האישי שלך. תתעד/י פעם אחת ואז תוכל/י לשמור.';return}
-  const profile={name:f.get('name'),nick:f.get('nick'),age:f.get('age'),status:f.get('status'),food:f.get('food'),fun:f.get('fun')};
+  const profile={name:f.get('name'),nick:f.get('nick'),age:f.get('age'),status:f.get('status'),food:f.get('food')};
   n.textContent='שומר…';
   try{await api('/api/profile',{id:me,pin,profile});await refresh();openProfile(me);$('profNote')&&($('profNote').textContent='נשמר.')}
   catch(err){n.textContent=err.msg==='name_taken'?'השם הזה כבר תפוס.':err.msg==='bad_age'?'גיל לא תקין.':err.status===403?'הקוד לא נכון.':'השמירה לא הצליחה.'}});
