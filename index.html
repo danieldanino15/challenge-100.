@@ -87,6 +87,11 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
 .rules li{border:3px solid var(--ink);border-radius:16px;padding:18px;counter-increment:r;display:flex;gap:14px;align-items:center;font:700 19px/1.3 Rubik}
 .rules li::before{content:counter(r);flex:none;width:44px;height:44px;border-radius:50%;background:var(--red);color:#fff;display:grid;place-items:center;font:900 22px Rubik}
 @media(max-width:600px){.rules{grid-template-columns:1fr}}
+.stk{position:fixed;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.4);z-index:50;cursor:pointer}
+.stk[hidden]{display:none}
+.stk img{width:min(80vw,400px);height:auto;animation:pop .65s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes pop{0%{transform:scale(.2) rotate(-25deg);opacity:0}100%{transform:scale(1) rotate(-3deg);opacity:1}}
+@media(prefers-reduced-motion:reduce){.stk img{animation:none}}
 @media(max-width:600px){.score{grid-template-columns:1fr;gap:18px}.ex{grid-template-columns:1fr}.p{grid-template-columns:1fr;gap:10px}.track{gap:3px}}
 @media(prefers-reduced-motion:reduce){.bar .f i{transition:none}}
 </style>
@@ -104,6 +109,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
   </div>
 </div></header>
 
+<div class="stk" id="stk" hidden role="dialog" aria-label="כולך מלך"><img src="sticker.webp" alt="כולך מלךךךך"></div>
 <main>
 <section class="band"><div class="wrap">
   <h2>החוקים</h2>
@@ -236,6 +242,8 @@ document.querySelectorAll('.quick').forEach(q=>q.addEventListener('click',e=>{co
   inp.value=b.dataset.set?b.dataset.set:Math.max(0,(+inp.value||0)+ +b.dataset.v);dirty=true;$('save').disabled=!sel}));
 ['inP','inS'].forEach(id=>$(id).addEventListener('input',()=>{dirty=true;$('save').disabled=!sel}));
 
+function showSticker(){const s=$('stk');s.hidden=false;clearTimeout(showSticker.t);showSticker.t=setTimeout(()=>{s.hidden=true},2800)}
+$('stk').addEventListener('click',()=>{$('stk').hidden=true});
 $('save').addEventListener('click',async()=>{
   const p=players.find(x=>x.id===sel);if(!p)return;
   const pin=$('pin').value.trim();
@@ -243,7 +251,7 @@ $('save').addEventListener('click',async()=>{
   const pv=Math.max(0,Math.min(2000,parseInt($('inP').value)||0)),sv=Math.max(0,Math.min(2000,parseInt($('inS').value)||0));
   $('save').disabled=true;$('note').textContent='שומר…';
   try{await api('/api/log',{id:p.id,day:edDay,p:pv,s:sv,pin});
-    pins[p.id]=pin;store.set('c100pins',pins);dirty=false;
+    pins[p.id]=pin;store.set('c100pins',pins);dirty=false;showSticker();
     p.log={...(p.log||{}),[edDay]:{p:pv,s:sv}};p.hasPin=true;renderAll(true);
     $('note').textContent=pv>=GOAL&&sv>=GOAL?`${p.name} סגר את יום ${edDay}. כל הכבוד.`:`נשמר: ${pv} שכיבות, ${sv} בטן ליום ${edDay}.`}
   catch(e){$('note').textContent=e.status===403?'הקוד לא נכון. רק המשתתף עצמו יכול לעדכן את השורה שלו.':'השמירה לא הצליחה, נסה שוב.'}
