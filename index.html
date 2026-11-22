@@ -202,7 +202,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
     <button class="save" id="save" disabled>שמור</button>
     <div class="note" id="note" role="status"></div>
   </div>
-  <div class="remind"><button class="bell" id="bell" type="button">תזכיר לי (18:00 ו-22:00) אם לא תיעדתי</button><div class="note" id="bellNote" role="status"></div></div>
+  <div class="remind"><button class="bell" id="bell" type="button">תלחץ עליי דחוף</button><div class="note" id="bellNote" role="status"></div></div>
   <nav class="jumps"><a class="jump" href="#progress"><span>לטבלה ולהתקדמות של כולם</span><b aria-hidden="true">↓</b></a><a class="jump" href="#chat"><span>לצ'אט של האתגר</span><b aria-hidden="true">↓</b></a></nav>
 </div></section>
 
@@ -365,7 +365,7 @@ const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent),standalone=matchMedia('
 let swReg=null;
 if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').then(r=>{swReg=r}).catch(()=>{});
 function renderBell(){const on=store.get('c100bell',null)===sel&&typeof Notification!=='undefined'&&Notification.permission==='granted';
-  $('bell').classList.toggle('on',on);$('bell').textContent=on?'תזכורות ב-18:00 וב-22:00 פעילות ✓':'תזכיר לי (18:00 ו-22:00) אם לא תיעדתי'}
+  $('bell').classList.toggle('on',on);$('bell').textContent=on?'תזכורות ב-18:00 וב-22:00 פעילות ✓':'תלחץ עליי דחוף'}
 $('bell').addEventListener('click',async()=>{
   const n=$('bellNote');
   if(!sel){n.textContent='קודם בחר את השם שלך.';return}
