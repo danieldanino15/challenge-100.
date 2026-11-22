@@ -184,6 +184,21 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
 @media(prefers-reduced-motion:reduce){.confetti{display:none}}
 .av{width:1.5em;height:1.5em;border-radius:50%;object-fit:cover;vertical-align:middle;margin-inline-end:.35em;flex:none;border:2px solid #fff;box-shadow:0 0 0 1px var(--line)}
 .av.lg{width:2em;height:2em}
+.poster{position:relative;margin:-22px -22px 0;padding:18px 16px 16px;border:9px solid #b3261e;border-radius:14px;color:#7a140e;text-align:center;overflow:hidden;
+ background:radial-gradient(circle at 50% 55%,rgba(241,228,200,0) 0 30%,rgba(120,40,20,.18) 100%),repeating-conic-gradient(from 0deg at 50% 55%,#f1e2c2 0 7.5deg,#e9c9a3 7.5deg 15deg)}
+.poster::before{content:"";position:absolute;inset:5px;border:2px solid #b3261e;border-radius:8px;pointer-events:none}
+.pz-star{font-size:34px;line-height:1;color:#b3261e;text-shadow:0 2px 0 #f1e2c2}
+.pz-name{position:relative;margin:6px -6px 0;background:#c62f22;color:#f6e7c8;font:900 clamp(26px,8vw,38px)/1.1 Rubik,sans-serif;padding:8px 10px;border-radius:6px;box-shadow:0 3px 0 #7a140e;text-wrap:balance}
+.pz-nick{display:inline-block;margin-top:8px;background:#f6e7c8;color:#7a140e;font:900 18px Rubik;padding:4px 14px;border:2px solid #b3261e;border-radius:6px}
+.pz-mid{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;margin:12px 0}
+.pz-photo img,.pz-empty{display:block;width:100%;aspect-ratio:4/5;object-fit:cover;border:5px solid #f6e7c8;border-radius:10px;box-shadow:0 6px 18px rgba(80,20,10,.35)}
+.pz-empty{display:grid;place-items:center;background:rgba(255,255,255,.35);font:700 15px Heebo;color:#7a140e}
+.pz-side{display:flex;flex-direction:column;align-items:center;gap:4px;font:900 20px Rubik;color:#7a140e;max-width:110px;overflow-wrap:anywhere}
+.pz-side i{font-style:normal;color:#b3261e;font-size:14px}
+.pz-bottom{background:#c62f22;color:#f6e7c8;font:900 clamp(18px,5.5vw,26px)/1.15 Rubik,sans-serif;padding:10px;border-radius:6px;box-shadow:0 3px 0 #7a140e;text-wrap:balance}
+.poster.fallen-p .pz-photo{filter:grayscale(1)}
+.poster.fallen-p::after{content:"✕";position:absolute;inset:0;display:grid;place-items:center;font:900 220px/1 Rubik;color:rgba(198,47,34,.55);pointer-events:none}
+.pcard.has-poster{border-top:0}
 .pname{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:start;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:5px}
 .prof{position:fixed;inset:0;z-index:55;background:rgba(0,0,0,.5);display:grid;place-items:center;padding:16px}
 .prof[hidden]{display:none}
@@ -415,13 +430,20 @@ const STATUSES=['רווק/ה','נשוי/אה','גרוש/ה','אלמן/ה','בז�
 let profFor=null;
 function openProfile(id){const p=players.find(x=>x.id===id);if(!p)return;profFor=id;
   const pr=p.profile||{},mine=id===me,s=statsOf(p);
-  $('profName').textContent=p.name;
-  const ph=pr.photoV?`<img class="pphoto" src="/api/img?avatar=${encodeURIComponent(id)}&v=${pr.photoV}" alt="${esc(p.name)}">`:(mine?'<div class="pphoto none">עוד אין תמונה. תעלה/י אחת למטה.</div>':'');
-  $('profPhoto').innerHTML=ph;
-  const facts=[['גיל',pr.age],['מצב משפחתי',pr.status],['מאכל אהוב',pr.food],['ימים מלאים',s.full],['סה"כ חזרות',fmt(s.tt)]].filter(([,v])=>v!=null&&v!=='');
-  const view=`${pr.nick?`<div class="pnick">"${esc(pr.nick)}"</div>`:''}<dl class="pfacts">${facts.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>${!mine&&!p.profile?'<p class="note">עוד לא מילא/ה פרטים.</p>':''}`;
+  $('profName').textContent=p.name;$('profPhoto').innerHTML='';
+  const st=statusOf(p);
+  const side=[pr.age,pr.status,pr.food].filter(v=>v!=null&&v!=='');
+  const photo=pr.photoV?`<img src="/api/img?avatar=${encodeURIComponent(id)}&v=${pr.photoV}" alt="${esc(p.name)}">`:`<div class="pz-empty">${mine?'תעלה/י תמונה למטה<br>והכרזה שלך מוכנה':'עוד בלי תמונה'}</div>`;
+  const bottom=st.out?'נפל/ה מהאתגר. ✕':s.full?`${s.full} ימים מלאים · ${fmt(s.tt)} חזרות`:'עוד לא התחיל/ה לכתוב היסטוריה';
+  const view=`<div class="poster${st.out?' fallen-p':''}">
+    <div class="pz-star" aria-hidden="true">★</div>
+    <div class="pz-name">${isKing(p)?'👑 ':''}${esc(p.name)}</div>
+    ${pr.nick?`<div class="pz-nick">${esc(pr.nick)}</div>`:''}
+    <div class="pz-mid"><div class="pz-photo">${photo}</div>${side.length?`<div class="pz-side">${side.map(v=>`<span>${esc(v)}</span>`).join('<i aria-hidden="true">★</i>')}</div>`:''}</div>
+    <div class="pz-bottom">${esc(bottom)}</div>
+  </div>${!mine&&!p.profile?'<p class="note" style="text-align:center">עוד לא מילא/ה פרטים.</p>':''}`;
   const form=mine?`<form class="pform" id="profForm"><h3 style="margin:16px 0 0">הפרטים שלי</h3>
-    <label>תמונה (תופיע גדולה בראש הכרטיס)<input name="photo" type="file" accept="image/*"></label>
+    <label>תמונה לכרזה<input name="photo" type="file" accept="image/*"></label>
     ${pr.photoV?'<label style="display:flex;gap:8px;align-items:center;font-weight:500"><input type="checkbox" name="removePhoto" style="min-height:auto"> להסיר את התמונה</label>':''}
     <label>שם<input name="name" maxlength="40" value="${esc(p.name)}"></label>
     <label>כינוי<input name="nick" maxlength="40" value="${esc(pr.nick||'')}" placeholder="למשל: מכונת המתח"></label>
@@ -429,7 +451,7 @@ function openProfile(id){const p=players.find(x=>x.id===id);if(!p)return;profFor
     <label>מצב משפחתי<select name="status"><option value="">—</option>${STATUSES.map(x=>`<option${x===pr.status?' selected':''}>${x}</option>`).join('')}</select></label>
     <label>מאכל אהוב<input name="food" maxlength="60" value="${esc(pr.food||'')}"></label>
     <button class="send" type="submit">שמור פרטים</button><div class="note" id="profNote" role="status"></div></form>`:'';
-  $('profBody').innerHTML=view+form;$('prof').hidden=false;$('profClose').focus();
+  $('profBody').innerHTML=view+form;document.querySelector('.pcard').classList.add('has-poster');$('profName').hidden=true;$('prof').hidden=false;$('profClose').focus();
 }
 $('board').addEventListener('click',e=>{const b=e.target.closest('[data-prof]');if(b)openProfile(b.dataset.prof)});
 $('profClose').addEventListener('click',()=>{$('prof').hidden=true});
