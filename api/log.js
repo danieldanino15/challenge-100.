@@ -1,5 +1,5 @@
 import { redis, getPlayers, checkPin, sendJson } from '../lib/store.js';
-import { todayIdx, isOut, DAILY, fullDays, MILESTONES } from '../lib/rules.js';
+import { todayIdx, isOut, DAILY, fullDays, MILESTONES, START } from '../lib/rules.js';
 import { pushToAll } from '../lib/push.js';
 
 const int = (v, min, max) => Number.isInteger(v) && v >= min && v <= max;
@@ -19,7 +19,11 @@ export default async function handler(req, res) {
     const log = (await redis.hgetall(`log:${id}`)) || {};
     if (auth !== 'admin' && isOut(log, todayIdx(), players[id].joinedDay)) return sendJson(res, 403, { error: 'out' });
     // `at` = when this day was first logged (used for the weekly "slacker cup").
-    const at = (log[day] && log[day].at) || Date.now();
+    // Keep the first real save time of the day; a 0-entry or one saved before that day began (e.g. setting a PIN early) doesn't count.
+    const dayStart = START + (day - 1) * 864e5 - 2 * 3600e3; // Israel winter time
+    const prev = log[day];
+    const prevTotal = prev ? (+prev.p || 0) + (+prev.s || 0) + (+prev.q || 0) + (+prev.m || 0) : 0;
+    const at = prev && prev.at && prev.at >= dayStart && prevTotal > 0 ? prev.at : Date.now();
     await redis.hset(`log:${id}`, { [day]: { p, s, q, m, at } });
 
     // Post the log to the group chat (one message per person per day; a re-save updates it).

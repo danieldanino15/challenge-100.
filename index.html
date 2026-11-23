@@ -370,7 +370,7 @@ function cupOf(){
   if(lastSat<1)return{pending:true,when:dateOf(T-w+7).toLocaleDateString('he-IL',{day:'numeric',month:'numeric'})};
   let best=null;
   for(const p of players){const ds=[];
-    for(let d=first;d<=Math.min(lastSat,DAYS);d++){const e=(p.log||{})[d];if(e&&e.at){const start=Date.UTC(2026,10,23)+(d-1)*864e5-ISR_OFF;ds.push(e.at-start)}}
+    for(let d=first;d<=Math.min(lastSat,DAYS);d++){const e=(p.log||{})[d];if(e&&e.at){const start=Date.UTC(2026,10,23)+(d-1)*864e5-ISR_OFF,dd=e.at-start;if(dd>=0&&dd<=48*3600e3&&((+e.p||0)+(+e.s||0)+(+e.q||0)+(+e.m||0))>0)ds.push(dd)}}
     if(!ds.length)continue;const avg=ds.reduce((a,b)=>a+b,0)/ds.length;
     if(!best||avg>best.avg)best={p,avg}}
   return{best,from:first,to:lastSat};
@@ -387,7 +387,10 @@ const isKing=p=>{const T=todayIdx();return T>=2&&T-1<=DAYS&&val(p,T-1).t>KING};
 const crown=p=>isKing(p)?'👑 ':'';
 // average time of day each person logs (first save of each day)
 function avgLogMin(p){const xs=[];for(const [d,e] of Object.entries(p.log||{})){if(!e||!e.at)continue;
-  const start=Date.UTC(2026,10,23)+(+d-1)*864e5-2*3600e3;xs.push((e.at-start)/6e4)}
+  const tot=(+e.p||0)+(+e.s||0)+(+e.q||0)+(+e.m||0);if(!tot)continue;
+  const start=Date.UTC(2026,10,23)+(+d-1)*864e5-2*3600e3,mins=(e.at-start)/6e4;
+  if(mins<0||mins>48*60)continue; // saved before the day began (e.g. setting a PIN early) — ignore
+  xs.push(mins)}
   return xs.length?xs.reduce((a,b)=>a+b,0)/xs.length:null}
 const hm=m=>{m=Math.round(m);return String(Math.floor(m/60)%24).padStart(2,'0')+':'+String(m%60).padStart(2,'0')};
 function timeTitles(){
