@@ -2,9 +2,18 @@ import { redis, getPlayers, sendJson } from '../lib/store.js';
 import { pushReady, webpush } from '../lib/push.js';
 import { DAYS, DAILY, todayIdx, total, isOut, isShabbat } from '../lib/rules.js';
 
+// How much a person must do today: 200 plus whatever they were short yesterday (0 = nothing owed).
+function owed(log, T, joined = 1) {
+  const y = T - 1;
+  if (y < Math.max(1, joined) || isShabbat(y)) return 0;
+  const t = total(log, y);
+  return t < DAILY ? DAILY + (DAILY - t) : 0;
+}
+
 const MESSAGES = {
   evening: 'נו יא סחבה, עוד רגע נגמר היום. תיעדת?',
   late: 'לא תיעדת היום. אם לא תתעד עד 12, מחר תצטרך להשלים. ודניאל יצחק עליך.',
+  morning: 'מחכה לך הודעה דחופה',
 };
 
 export default async function handler(req, res) {
@@ -17,17 +26,21 @@ export default async function handler(req, res) {
   if (!redis) return sendJson(res, 500, { error: 'no_database' });
   if (!pushReady()) return sendJson(res, 500, { error: 'no_vapid_key' });
 
-  const slot = (req.query && req.query.slot) === 'late' ? 'late' : 'evening';
+  const q = (req.query && req.query.slot) || '';
+  const slot = q === 'late' || q === 'morning' ? q : 'evening';
   const T = todayIdx();
   if (T < 1 || T > DAYS) return sendJson(res, 200, { skipped: 'outside_challenge', day: T });
   if (isShabbat(T)) return sendJson(res, 200, { skipped: 'shabbat', day: T });
 
   const players = await getPlayers();
-  const payload = JSON.stringify({ title: 'אתגר 100 ימים', body: MESSAGES[slot], url: '/' });
+  const payload = JSON.stringify({ title: 'אתגר 100 ימים', body: MESSAGES[slot], url: slot === 'morning' ? '/?owe=1' : '/' });
   let sent = 0, removed = 0, skipped = 0;
   for (const id of Object.keys(players)) {
     const [log, subs] = await Promise.all([redis.hgetall(`log:${id}`), redis.hgetall(`subs:${id}`)]);
-    if (!subs || total(log, T) >= DAILY || isOut(log, T, players[id].joinedDay)) { skipped++; continue; }
+    const joined = players[id].joinedDay;
+    if (!subs || isOut(log, T, joined)) { skipped++; continue; }
+    // morning: only those who must make up yesterday; evening/late: anyone not done for today
+    if (slot === 'morning' ? !owed(log, T, joined) : total(log, T) >= (owed(log, T, joined) || DAILY)) { skipped++; continue; }
     for (const [key, sub] of Object.entries(subs)) {
       try {
         await webpush.sendNotification(sub, payload, { TTL: 3 * 3600, urgency: 'high' });

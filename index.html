@@ -211,6 +211,13 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
 .poster.fallen-p .pz-photo{filter:grayscale(1)}
 .poster.fallen-p::after{content:"✕";position:absolute;inset:0;display:grid;place-items:center;font:900 220px/1 Rubik;color:rgba(198,47,34,.55);pointer-events:none}
 .pcard.has-poster{border-top:0}
+.owe{position:fixed;inset:0;z-index:58;background:rgba(0,0,0,.6);display:grid;place-items:center;padding:16px}
+.owe[hidden]{display:none}
+.owein{background:#fff;color:#141414;border-radius:24px;padding:18px 18px 20px;width:min(100%,400px);text-align:center;border:6px solid #e3362a;animation:pop .6s cubic-bezier(.2,1.6,.4,1) both}
+.owein img{width:min(70%,240px);height:auto;transform:rotate(-4deg);margin:-60px auto 6px;display:block;filter:drop-shadow(0 8px 14px rgba(0,0,0,.35))}
+.owein h2{font:900 24px/1.15 Rubik;margin:0 0 8px;color:#c62f22}
+.owein p{font:700 18px/1.4 Heebo;margin:0 0 14px}.owein p b{font:900 26px Rubik;color:#c62f22}
+.owein button{width:100%;min-height:52px;border:0;border-radius:14px;background:#141414;color:#fff;font:900 18px Rubik;cursor:pointer}
 .pname{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:start;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:5px}
 .prof{position:fixed;inset:0;z-index:55;background:rgba(0,0,0,.5);display:grid;place-items:center;padding:16px}
 .prof[hidden]{display:none}
@@ -247,6 +254,12 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
 </div></header>
 
 <div class="confetti" id="confetti" hidden></div>
+<div class="owe" id="owe" hidden role="dialog" aria-modal="true" aria-labelledby="oweT"><div class="owein">
+  <img src="fall.webp" alt="">
+  <h2 id="oweT">קורה שנופלים, השאלה איך אתה קם?</h2>
+  <p>אתה צריך להשלים היום <b id="oweN">400</b>, או שזה הפרצוף שתראה מחר כשתעוף כסחבה.</p>
+  <button type="button" id="oweGo">יאללה, אני קם</button>
+</div></div>
 <div class="prof" id="prof" hidden role="dialog" aria-modal="true" aria-labelledby="profName"><div class="pcard">
   <button type="button" class="pclose" id="profClose" aria-label="סגור">✕</button>
   <div id="profPhoto"></div><h2 id="profName"></h2><div id="profBody"></div>
@@ -503,6 +516,15 @@ function ranked(){return players.map(p=>({p,s:statsOf(p),st:statusOf(p)})).sort(
 function renderTodays(){const el=$('tlist');if(!el)return;
   const rows=ranked().map((r,i)=>({p:r.p,L:leftToday(r.p),i,tt:r.s.tt})).filter(x=>x.L);
   el.innerHTML=rows.length?rows.map(({p,L,i,tt})=>`<div class="tc${L.left?'':' done'}${p.id===me?' me':''}"><div class="n"><span class="rk">${i+1}</span>${av(p)}${crown(p)}${esc(p.name)}</div><small class="tt">${fmt(tt)} חזרות סה"כ</small><b>${L.left?`נשארו ${L.left}`:'סגור ✓'}</b><span>${L.line}</span></div>`).join(''):'<div class="tc"><span>האתגר עוד לא התחיל או כבר נגמר.</span></div>'}
+
+// pop-up for whoever must make up a missed day (once a day per phone, or when opened from the morning notification)
+function checkOwe(){const p=me&&players.find(x=>x.id===me);if(!p)return;const T=todayIdx();if(T<1||T>DAYS)return;
+  const st=statusOf(p);if(st.out||!st.owe)return;const done=val(p,T).t;if(done>=st.owe)return;
+  const key='c100owe-'+T,fromPush=/[?&]owe=1/.test(location.search);
+  if(!fromPush&&store.get(key,false))return;store.set(key,true);
+  $('oweN').textContent=st.owe-done;$('owe').hidden=false;$('oweGo').focus()}
+$('oweGo').addEventListener('click',()=>{$('owe').hidden=true;$('logTitle').scrollIntoView({behavior:'smooth'})});
+$('owe').addEventListener('click',e=>{if(e.target.id==='owe')$('owe').hidden=true});
 function renderHero(){
   const T=todayIdx();const cur=Math.max(0,Math.min(DAYS,T));
   $('dayNum').firstChild.nodeValue=T<1?'0':T>DAYS?'100':String(cur);
@@ -561,7 +583,7 @@ function renderAs(){const p=players.find(x=>x.id===sel);const a=$('chatAs');if(a
 function renderAll(keepEditor){renderAs();if(chatMsgs.length)renderChat();renderHero();renderWho();renderBoard();renderCards();if(typeof renderBell==='function')renderBell();if(!keepEditor)loadEditor()}
 
 async function refresh(){
-  try{const j=await api('/api/state');players=j.players||[];bets=j.bets||{};loaded=true;renderAll(dirty)}
+  try{const j=await api('/api/state');players=j.players||[];bets=j.bets||{};const first=!loaded;loaded=true;renderAll(dirty);if(first)checkOwe()}
   catch(e){if(!loaded)$('board').innerHTML='<div class="empty">לא ניתן לטעון את הנתונים כרגע. נסה לרענן.</div>'}
 }
 
