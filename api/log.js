@@ -7,7 +7,7 @@ const int = (v, min, max) => Number.isInteger(v) && v >= min && v <= max;
 export default async function handler(req, res) {
   if (req.method !== 'POST') return sendJson(res, 405, { error: 'method' });
   if (!redis) return sendJson(res, 500, { error: 'no_database' });
-  const { id, day, q: q0 = 0, m: m0 = 0, pin, mode = 'add' } = req.body || {};
+  const { id, day, q: q0 = 0, m: m0 = 0, pin, mode = 'set' } = req.body || {};
   let { p, s } = req.body || {};
   let q = q0, m = m0;
   if (typeof id !== 'string' || !int(day, 1, 100) || !int(p, 0, 2000) || !int(s, 0, 2000) || !int(q, 0, 2000) || !int(m, 0, 2000) || !/^\d{4}$/.test(pin || '')) {
@@ -25,7 +25,7 @@ export default async function handler(req, res) {
     const dayStart = START + (day - 1) * 864e5 - 2 * 3600e3; // Israel winter time
     const prev = log[day];
     // 'add' (default): this save is added to what the day already has. 'set': fix the day's numbers.
-    if (mode !== 'set' && prev) {
+    if (mode === 'add' && prev) {
       const cap = n => Math.min(5000, n);
       p = cap(p + (+prev.p || 0)); s = cap(s + (+prev.s || 0)); q = cap(q + (+prev.q || 0)); m = cap(m + (+prev.m || 0));
     }
