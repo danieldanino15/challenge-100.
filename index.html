@@ -511,7 +511,7 @@ function loadEditor(){
 }
 function renderBoard(){
   if(!players.length){$('board').innerHTML=`<div class="empty">${loaded?'אין עדיין משתתפים. הצטרפו למטה.':'טוען נתונים…'}</div>`;return}
-  const tt=timeTitles();const rows=players.map(p=>({p,s:statsOf(p),st:statusOf(p)})).sort((a,b)=>a.st.out-b.st.out||b.s.full-a.s.full||b.s.score-a.s.score);
+  const tt=timeTitles();const rows=players.map(p=>({p,s:statsOf(p),st:statusOf(p)})).sort((a,b)=>a.st.out-b.st.out||a.st.warn-b.st.warn||b.s.tt-a.s.tt);
   $('board').innerHTML=rows.map(({p,s,st},i)=>`<div class="p${st.out?' out':''}">
     <div><div class="rank">${st.out?'בחוץ':'מקום '+(i+1)}</div><h3><button type="button" class="pname" data-prof="${esc(p.id)}">${av(p,'lg')}${crown(p)}${esc(p.name)}</button>${st.warn?'<span class="excuse">כבר הספקתי לתרץ תירוצים</span>':''}${st.out?'<span class="xmark" aria-label="עף מהאתגר">✕</span>':''}</h3>${st.out?`<div class="outb">עף מהאתגר · פספס את ימים ${st.missed[0]} ו-${st.missed[1]}</div>`:''}${p.id===tt.early?'<span class="tbadge">🐦 ציפור בוקר</span>':''}${tt.edge.has(p.id)?'<span class="tbadge">⏱️ חי על הקצה</span>':''}${avgLogMin(p)!=null?`<span class="tbadge">מתעד/ת בממוצע ב-${hm(avgLogMin(p))}</span>`:''}
       <div class="stats"><span><b>${s.full}</b> ימים מלאים</span><span><b>${s.rate}%</b> הצלחה עד היום</span><span><b>${s.streak}</b> ברצף</span></div></div>
