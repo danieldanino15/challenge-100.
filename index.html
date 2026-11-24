@@ -412,8 +412,8 @@ function timeTitles(){
   for(const p of players){for(let d=Math.max(1,T-7);d<T;d++){const e=(p.log||{})[d];if(!e||!e.at)continue;
     const mins=(e.at-(Date.UTC(2026,10,23)+(d-1)*864e5-2*3600e3))/6e4;if(mins>=23*60+45&&mins<24*60)edge.add(p.id)}}
   return{early:early&&early.p.id,edge}}
-function renderKings(){const ks=players.filter(isKing);
-  $('kings').innerHTML=ks.length?ks.map(p=>`<div class="k">👑 ${av(p)}${esc(p.name)}</div>`).join(''):'<small>אף אחד. עוד.</small>'}
+function renderKings(){const y=todayIdx()-1;const ks=players.filter(isKing).sort((a,b)=>val(b,y).t-val(a,y).t);
+  $('kings').innerHTML=ks.length?ks.map(p=>`<div class="k">👑 ${av(p)}${esc(p.name)} <small style="font:500 13px Heebo;opacity:.8">${val(p,y).t}</small></div>`).join(''):'<small>אף אחד. עוד.</small>'}
 function betsClosed(){return players.some(p=>statusOf(p).out)}
 function renderBets(){
   const closed=betsClosed(),firstOut=closed?players.map(p=>({p,st:statusOf(p)})).filter(x=>x.st.out).sort((a,b)=>a.st.missed[1]-b.st.missed[1])[0].p:null;
