@@ -123,7 +123,9 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
 .stk .cap{background:#fff;color:var(--red);font:900 clamp(28px,7vw,44px)/1.15 Rubik,sans-serif;padding:26px 28px;border-radius:26px;box-shadow:0 0 0 8px #fff,0 0 0 11px var(--red),0 18px 40px rgba(0,0,0,.35);max-width:min(86vw,460px);text-align:center;text-wrap:balance;animation:pop .65s cubic-bezier(.2,1.6,.4,1) both}
 .stk .cap[hidden],.stk img[hidden]{display:none}
 .ex{grid-template-columns:repeat(4,minmax(0,1fr))}
-.tot{margin-top:14px}.tot .t{display:flex;justify-content:space-between;font-weight:700;margin-bottom:6px}.tot .t b{font-family:Rubik;font-size:20px}
+.tot{margin-top:10px}.sofar{margin-top:12px;font-size:15px}.sofar b{font-family:Rubik}
+.fixbtn{background:none;border:0;padding:6px 0;min-height:36px;color:var(--red-d);text-decoration:underline;font:500 14px Heebo;cursor:pointer}.fixbtn[hidden]{display:none}
+.ex.fixing .box{outline:2px dashed var(--red);outline-offset:-2px}.tot .t{display:flex;justify-content:space-between;font-weight:700;margin-bottom:6px}.tot .t b{font-family:Rubik;font-size:20px}
 .tot .f{height:16px;background:var(--chalk);border-radius:8px;overflow:hidden}.tot .f i{display:block;height:100%;width:0;background:var(--red);border-radius:8px;transition:width .3s}
 .tot.done .f i{background:light-dark(#141414,#f2f2f2)}
 .jumps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px}
@@ -266,7 +268,8 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
         <div class="quick" data-for="inQ"><button data-v="10">+10</button><button data-v="25">+25</button><button class="hund" data-set="100">100</button></div>
       </div>
     </div>
-    <div class="tot"><div class="t"><span>סה"כ ביום</span><b id="totNum">0 / 200</b></div><div class="f"><i id="totBar"></i></div></div>
+    <div class="sofar" id="sofar"></div><button type="button" class="fixbtn" id="fixBtn" hidden></button>
+    <div class="tot"><div class="t"><span>סה"כ היום (כולל מה שתוסיף)</span><b id="totNum">0 / 200</b></div><div class="f"><i id="totBar"></i></div></div>
     <div class="box" style="margin-top:14px"><label for="pin" id="pinLbl">הקוד האישי שלך</label><input id="pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••" style="width:100%;font:700 22px Rubik;text-align:center;letter-spacing:.3em;border:2px solid var(--line);border-radius:12px;padding:8px;background:var(--bg);color:var(--ink);min-height:52px"></div>
     <button class="save" id="save" disabled>שמור</button>
     <div class="note" id="note" role="status"></div>
@@ -328,7 +331,7 @@ const dateOf=d=>{const x=new Date(START);x.setDate(x.getDate()+d-1);return x};
 const dstr=d=>dateOf(d).toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'numeric'});
 const todayIdx=()=>{const n=new Date();const t=new Date(n.getFullYear(),n.getMonth(),n.getDate());return Math.round((t-START)/864e5)+1};
 const store={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
-let bets={}, me=store.get('c100me',null), players=[], sel=me||null, edDay=1, dirty=false, loaded=false;
+let fixMode=false, bets={}, me=store.get('c100me',null), players=[], sel=me||null, edDay=1, dirty=false, loaded=false;
 const lockMe=()=>{if(sel&&me!==sel){me=sel;store.set('c100me',me);renderWho();renderAs()}};
 const pins=store.get('c100pins',{});
 
@@ -359,8 +362,8 @@ function statusOf(p){
   const owe=yt<DAILY&&T<=DAYS&&yw!==5&&yw!==6?DAILY+(DAILY-yt):0;
   return{missed,out:missed.length>=2,warn:missed.length===1,owe}
 }
-function updTot(){const n=k=>Math.max(0,parseInt($(k).value)||0);const t=n('inP')+n('inS')+n('inQ')+n('inM');
-  const p=players.find(x=>x.id===sel),st=p?statusOf(p):null,goal=st&&st.owe&&edDay===todayIdx()?st.owe:DAILY;
+function updTot(){const n=k=>Math.max(0,parseInt($(k).value)||0);const p=players.find(x=>x.id===sel);const t=n('inP')+n('inS')+n('inQ')+n('inM')+(fixMode||!p?0:val(p,edDay).t);
+  const st=p?statusOf(p):null,goal=st&&st.owe&&edDay===todayIdx()?st.owe:DAILY;
   $('totNum').textContent=`${t} / ${goal}`;$('totBar').style.width=Math.min(100,t/goal*100)+'%';$('totBar').parentNode.parentNode.classList.toggle('done',t>=goal)}
 
 // ---------- weekly slacker cup: who logged latest (on average) last Sunday-Saturday week
@@ -493,8 +496,13 @@ function loadEditor(){
   const p=players.find(x=>x.id===sel);
   $('edDay').textContent=edDay;$('edDate').textContent=dstr(edDay);
   $('logTitle').textContent=edDay===todayIdx()?'מה עשית היום?':'עדכון יום '+edDay;
-  const v=p?val(p,edDay):{p:0,s:0,has:false};
-  $('inP').value=v.has?v.p:'';$('inS').value=v.has?v.s:'';$('inQ').value=v.has?v.q:'';$('inM').value=v.has?v.m:'';updTot();
+  const v=p?val(p,edDay):{p:0,s:0,q:0,m:0,t:0,has:false};
+  if(fixMode){$('inP').value=v.has?v.p:'';$('inS').value=v.has?v.s:'';$('inQ').value=v.has?v.q:'';$('inM').value=v.has?v.m:''}
+  else{$('inP').value=$('inS').value=$('inQ').value=$('inM').value=''}
+  $('sofar').innerHTML=!p?'':v.t?`נשמר ליום ${edDay}: <b>${v.t}</b> חזרות (שכיבות ${v.p} · בטן ${v.s} · סקוואט ${v.q} · מתח ${v.m})`:`ליום ${edDay} עוד לא נשמר כלום`;
+  $('fixBtn').textContent=fixMode?'חזרה להוספה רגילה':'טעיתי? לתקן את הסכום של היום';$('fixBtn').hidden=!p||!v.t&&!fixMode;
+  $('save').textContent=fixMode?'שמור תיקון':'הוסף לסכום של היום';
+  document.querySelector('.ex').classList.toggle('fixing',fixMode);updTot();
   $('pin').value=p&&pins[p.id]||'';
   $('pinLbl').textContent=p&&!p.hasPin?'בחר קוד אישי של 4 ספרות (רק אתה תוכל לעדכן איתו)':'הקוד האישי שלך';
   const stE=p?statusOf(p):null;dirty=false;$('save').disabled=!p||(stE&&stE.out);
@@ -532,6 +540,7 @@ $('who').addEventListener('change',()=>renderAs());
 $('meLine').addEventListener('click',e=>{if(e.target.id!=='switchMe')return;
   if(e.target.dataset.sure){me=null;sel=null;store.set('c100me',null);$('pin').value='';renderAll()}else{e.target.dataset.sure=1;e.target.textContent='לחץ/י שוב כדי להחליף שם'}});
 $('who').addEventListener('change',e=>{if(e.target.value==='__new'){e.target.value=sel||'';$('join').scrollIntoView({behavior:'smooth'});$('addName').focus({preventScroll:true});return}sel=e.target.value||null;store.set('c100who',sel);renderCards();loadEditor();renderBell();$('bellNote').textContent=''});
+$('fixBtn').addEventListener('click',()=>{fixMode=!fixMode;loadEditor()});
 $('prev').addEventListener('click',()=>{if(edDay>1){edDay--;renderCards();loadEditor()}});
 $('next').addEventListener('click',()=>{if(edDay<DAYS){edDay++;renderCards();loadEditor()}});
 $('cards').addEventListener('click',e=>{const b=e.target.closest('.sq');if(!b)return;if(me&&b.dataset.p!==me){$('note').textContent='אפשר לתעד רק לעצמך.';return}sel=b.dataset.p;edDay=+b.dataset.d;store.set('c100who',sel);renderWho();renderCards();loadEditor();$('logTitle').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})});
@@ -573,11 +582,12 @@ $('save').addEventListener('click',async()=>{
   const pin=$('pin').value.trim();
   if(!/^\d{4}$/.test(pin)){$('note').textContent='צריך קוד אישי של 4 ספרות.';$('pin').focus();return}
   const num=k=>Math.max(0,Math.min(2000,parseInt($(k).value)||0));
-  const pv=num('inP'),sv=num('inS'),qv=num('inQ'),mv=num('inM'),tv=pv+sv+qv+mv;
+  const pv=num('inP'),sv=num('inS'),qv=num('inQ'),mv=num('inM');
+  if(!fixMode&&!(pv+sv+qv+mv)){$('note').textContent='תמלא/י כמה עשית בסבב הזה.';return}
   $('save').disabled=true;$('note').textContent='שומר…';
-  try{const jr=await api('/api/log',{id:p.id,day:edDay,p:pv,s:sv,q:qv,m:mv,pin});
+  try{const jr=await api('/api/log',{id:p.id,day:edDay,p:pv,s:sv,q:qv,m:mv,pin,mode:fixMode?'set':'add'});const nd=jr.day||{p:pv,s:sv,q:qv,m:mv},tv=nd.p+nd.s+nd.q+nd.m;fixMode=false;
     pins[p.id]=pin;store.set('c100pins',pins);dirty=false;lockMe();if(jr&&jr.milestone){confetti();const s=$('stk');$('stkImg').hidden=true;$('stkCap').hidden=false;$('stkCap').textContent=`${jr.milestone} ימים מלאים. ${MS[jr.milestone]}`;s.hidden=false;clearTimeout(showSticker.t);showSticker.t=setTimeout(()=>{s.hidden=true},4500)}else showSticker();
-    p.log={...(p.log||{}),[edDay]:{p:pv,s:sv,q:qv,m:mv}};p.hasPin=true;renderAll(true);loadChat();
+    p.log={...(p.log||{}),[edDay]:{...((p.log||{})[edDay]||{}),...nd}};p.hasPin=true;renderAll(true);loadEditor();loadChat();
     $('note').textContent=tv>=DAILY?`${p.name} סגר את יום ${edDay} עם ${tv} חזרות. כל הכבוד.`:`נשמר: ${tv} חזרות ליום ${edDay}. חסרות עוד ${DAILY-tv}.`}
   catch(e){$('note').textContent=e.msg==='out'?'עפת מהאתגר. הכניסה שלך נחסמה.':e.status===403?'הקוד לא נכון. רק המשתתף עצמו יכול לעדכן את השורה שלו.':'השמירה לא הצליחה, נסה שוב.'}
   $('save').disabled=false;

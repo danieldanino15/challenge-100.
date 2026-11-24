@@ -7,7 +7,9 @@ const int = (v, min, max) => Number.isInteger(v) && v >= min && v <= max;
 export default async function handler(req, res) {
   if (req.method !== 'POST') return sendJson(res, 405, { error: 'method' });
   if (!redis) return sendJson(res, 500, { error: 'no_database' });
-  const { id, day, p, s, q = 0, m = 0, pin } = req.body || {};
+  const { id, day, q: q0 = 0, m: m0 = 0, pin, mode = 'add' } = req.body || {};
+  let { p, s } = req.body || {};
+  let q = q0, m = m0;
   if (typeof id !== 'string' || !int(day, 1, 100) || !int(p, 0, 2000) || !int(s, 0, 2000) || !int(q, 0, 2000) || !int(m, 0, 2000) || !/^\d{4}$/.test(pin || '')) {
     return sendJson(res, 400, { error: 'bad_input' });
   }
@@ -22,6 +24,11 @@ export default async function handler(req, res) {
     // Keep the first real save time of the day; a 0-entry or one saved before that day began (e.g. setting a PIN early) doesn't count.
     const dayStart = START + (day - 1) * 864e5 - 2 * 3600e3; // Israel winter time
     const prev = log[day];
+    // 'add' (default): this save is added to what the day already has. 'set': fix the day's numbers.
+    if (mode !== 'set' && prev) {
+      const cap = n => Math.min(5000, n);
+      p = cap(p + (+prev.p || 0)); s = cap(s + (+prev.s || 0)); q = cap(q + (+prev.q || 0)); m = cap(m + (+prev.m || 0));
+    }
     const prevTotal = prev ? (+prev.p || 0) + (+prev.s || 0) + (+prev.q || 0) + (+prev.m || 0) : 0;
     const at = prev && prev.at && prev.at >= dayStart && prevTotal > 0 ? prev.at : Date.now();
     await redis.hset(`log:${id}`, { [day]: { p, s, q, m, at } });
@@ -48,7 +55,7 @@ export default async function handler(req, res) {
       await redis.hset('chat', { [`ms-${id}-${hit}`]: { mid: `ms-${id}-${hit}`, pid: id, name, text: msg, auto: true, hasImg: false, ts: Date.now() + 1 } });
       await pushToAll(redis, Object.keys(players), { title: 'אתגר 100 ימים', body: msg, url: '/' }, id);
     }
-    sendJson(res, 200, { ok: true, milestone: hit || null });
+    sendJson(res, 200, { ok: true, milestone: hit || null, day: { p, s, q, m } });
   } catch (e) {
     console.error(e);
     sendJson(res, 500, { error: 'server' });
