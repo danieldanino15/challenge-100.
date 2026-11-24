@@ -6,5 +6,6 @@ export default function handler(req, res) {
     database: !!redis,
     pushKey: !!process.env.VAPID_PRIVATE_KEY,
     cronSecret: !!process.env.CRON_SECRET,
+    version: 'owe-popup-1',
   });
 }
