@@ -178,6 +178,15 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
 .betboard li::before{content:counter(b) ".";font-family:Rubik;margin-inline-end:6px}
 .betboard li span{flex:1}.betboard li b{font-family:Rubik;white-space:nowrap}
 .betboard .none{background:none;padding:0;font-weight:400}.betboard .none::before{content:none}
+.todays{margin-top:16px}.todays h2{color:#fff;font-size:20px;margin:0 0 8px}
+.tlist{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px;margin-inline:-4px;padding-inline:4px}
+.tc{flex:0 0 min(70%,220px);scroll-snap-align:start;background:#fff;color:#141414;border-radius:14px;padding:10px 12px;display:grid;gap:2px}
+.tc .n{display:flex;align-items:center;font:700 15px Rubik;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tc b{font:900 24px Rubik;color:#c62f22}.tc.done b{color:#141414}.tc span{font-size:13px;line-height:1.3}
+.tc.me{outline:3px solid #141414}
+.left{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;background:light-dark(#fff1ef,#2a1513);border-inline-start:5px solid var(--red);border-radius:10px;padding:8px 12px;margin-bottom:10px}
+.left b{font:900 20px Rubik;color:var(--red-d);white-space:nowrap}.left span{font-size:15px}
+.left.done{background:var(--card);border-color:light-dark(#141414,#f2f2f2)}.left.done b{color:var(--ink)}
 .excuse{display:inline-block;transform:rotate(-4deg);background:#ffe14d;color:#141414;font:900 13px Rubik;padding:4px 10px;border-radius:6px;box-shadow:0 2px 0 rgba(0,0,0,.25);margin-inline-start:8px;vertical-align:4px;white-space:nowrap}
 .tbadge{display:inline-block;margin-top:6px;margin-inline-end:6px;font:700 13px Rubik;background:var(--card);border-radius:999px;padding:3px 10px}
 .confetti{position:fixed;inset:0;pointer-events:none;z-index:60;overflow:hidden}
@@ -226,6 +235,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
     <p>100 ימים. 200 חזרות ביום מכל התרגילים ביחד: שכיבות סמיכה, כפיפות בטן, סקוואט ומתח. מחלקים איך שרוצים.</p></div>
     <aside class="fallen" aria-label="שמות הנופלים"><h2>שמות הנופלים</h2><ul id="fallen"></ul><div class="kings"><h3>מי המלך? <small>(מעל 220 אתמול)</small></h3><div id="kings"></div></div><div class="cup"><h3>גביע הסחבה של השבוע <small>(מי שמתעד הכי מאוחר ביום)</small></h3><div id="cup"></div></div></aside>
   </div>
+  <div class="todays"><h2>מה נשאר לכל אחד היום</h2><div class="tlist" id="tlist"></div></div>
   <div class="score">
     <div class="day" id="dayNum">0<small id="dayLbl">מתחילים היום! · 23.11.2026</small></div>
     <div>
@@ -474,6 +484,22 @@ $('prof').addEventListener('submit',async e=>{if(e.target.id!=='profForm')return
   catch(err){n.textContent=err.msg==='name_taken'?'השם הזה כבר תפוס.':err.msg==='bad_age'?'גיל לא תקין.':err.status===403?'הקוד לא נכון.':'השמירה לא הצליחה.'}});
 const av=(p,cls='')=>p&&p.profile&&p.profile.photoV?`<img class="av ${cls}" src="/api/img?avatar=${encodeURIComponent(p.id)}&v=${p.profile.photoV}" alt="" loading="lazy">`:'';
 const byId=id=>players.find(x=>x.id===id);
+
+// what each person still needs today, with a short push
+function leftToday(p){const T=todayIdx();if(T<1||T>DAYS)return null;const st=statusOf(p);if(st.out)return null;
+  const goal=st.owe||DAILY,done=val(p,T).t,left=Math.max(0,goal-done),hr=new Date().getHours();
+  let line;
+  if(!left)line=done>220?'סגר/ה את היום ועוד בכתר. מלך/ה.':'סגר/ה את היום. כל הכבוד.';
+  else if(hr>=22)line='פחות משעתיים לחצות. קום/י עכשיו.';
+  else if(!done)line='עוד לא התחיל/ה. השעון מתקתק.';
+  else if(left<=50)line='עוד סט אחד וזהו.';
+  else if(left<=100)line='חצי דרך. אל תהיה סחבה.';
+  else if(left<=150)line='התחלת? עכשיו תסיים.';
+  else line='הספה מחכה. אל תיתן/י לה לנצח.';
+  return{left,goal,done,line}}
+function renderTodays(){const el=$('tlist');if(!el)return;
+  const rows=players.map(p=>({p,L:leftToday(p)})).filter(x=>x.L).sort((a,b)=>(b.p.id===me)-(a.p.id===me)||b.L.left-a.L.left);
+  el.innerHTML=rows.length?rows.map(({p,L})=>`<div class="tc${L.left?'':' done'}${p.id===me?' me':''}"><div class="n">${av(p)}${esc(p.name)}</div><b>${L.left?`נשארו ${L.left}`:'סגור ✓'}</b><span>${L.line}</span></div>`).join(''):'<div class="tc"><span>האתגר עוד לא התחיל או כבר נגמר.</span></div>'}
 function renderHero(){
   const T=todayIdx();const cur=Math.max(0,Math.min(DAYS,T));
   $('dayNum').firstChild.nodeValue=T<1?'0':T>DAYS?'100':String(cur);
@@ -481,7 +507,7 @@ function renderHero(){
   $('track').innerHTML=Array.from({length:DAYS},(_,i)=>`<i class="${i+1<T?'past':i+1===T?'now':''}"></i>`).join('');
   let gt=0;players.forEach(p=>{gt+=statsOf(p).tt});
   const down=players.map(p=>({p,st:statusOf(p)})).filter(x=>x.st.out).sort((a,b)=>a.st.missed[1]-b.st.missed[1]);
-  renderCup();renderKings();renderBets();
+  renderCup();renderKings();renderBets();renderTodays();
   $('fallen').innerHTML=down.length?down.map(({p,st})=>`<li><b style="display:flex;align-items:center">${av(p)}${esc(p.name)}</b> <span>✕ יום ${st.missed[1]}</span></li>`).join(''):'<li class="none">אף אחד לא נפל. בינתיים.</li>';
   $('meta').innerHTML=`<span>סיום: <b>${dateOf(DAYS).toLocaleDateString('he-IL')}</b></span><span>נשארו: <b>${Math.max(0,Math.min(DAYS,DAYS-T+1))}</b> ימים</span><span>כל הקבוצה: <b>${fmt(gt)}</b> חזרות</span>`;
 }
@@ -513,7 +539,7 @@ function renderBoard(){
   if(!players.length){$('board').innerHTML=`<div class="empty">${loaded?'אין עדיין משתתפים. הצטרפו למטה.':'טוען נתונים…'}</div>`;return}
   const tt=timeTitles();const rows=players.map(p=>({p,s:statsOf(p),st:statusOf(p)})).sort((a,b)=>a.st.out-b.st.out||a.st.warn-b.st.warn||b.s.tt-a.s.tt);
   $('board').innerHTML=rows.map(({p,s,st},i)=>`<div class="p${st.out?' out':''}">
-    <div><div class="rank">${st.out?'בחוץ':'מקום '+(i+1)}</div><h3><button type="button" class="pname" data-prof="${esc(p.id)}">${av(p,'lg')}${crown(p)}${esc(p.name)}</button>${st.warn?'<span class="excuse">כבר הספקתי לתרץ תירוצים</span>':''}${st.out?'<span class="xmark" aria-label="עף מהאתגר">✕</span>':''}</h3>${st.out?`<div class="outb">עף מהאתגר · פספס את ימים ${st.missed[0]} ו-${st.missed[1]}</div>`:''}${p.id===tt.early?'<span class="tbadge">🐦 ציפור בוקר</span>':''}${tt.edge.has(p.id)?'<span class="tbadge">⏱️ חי על הקצה</span>':''}${avgLogMin(p)!=null?`<span class="tbadge">מתעד/ת בממוצע ב-${hm(avgLogMin(p))}</span>`:''}
+    <div>${(()=>{const L=leftToday(p);return L?`<div class="left${L.left?'':' done'}"><b>${L.left?`נשארו היום ${L.left}`:'היום סגור ✓'}</b><span>${L.line}</span></div>`:''})()}<div class="rank">${st.out?'בחוץ':'מקום '+(i+1)}</div><h3><button type="button" class="pname" data-prof="${esc(p.id)}">${av(p,'lg')}${crown(p)}${esc(p.name)}</button>${st.warn?'<span class="excuse">כבר הספקתי לתרץ תירוצים</span>':''}${st.out?'<span class="xmark" aria-label="עף מהאתגר">✕</span>':''}</h3>${st.out?`<div class="outb">עף מהאתגר · פספס את ימים ${st.missed[0]} ו-${st.missed[1]}</div>`:''}${p.id===tt.early?'<span class="tbadge">🐦 ציפור בוקר</span>':''}${tt.edge.has(p.id)?'<span class="tbadge">⏱️ חי על הקצה</span>':''}${avgLogMin(p)!=null?`<span class="tbadge">מתעד/ת בממוצע ב-${hm(avgLogMin(p))}</span>`:''}
       <div class="stats"><span><b>${s.full}</b> ימים מלאים</span><span><b>${s.rate}%</b> הצלחה עד היום</span><span><b>${s.streak}</b> ברצף</span></div></div>
     <div>
       <div class="bar"><div class="t"><span>סה"כ חזרות</span><b>${fmt(s.tt)} / 20,000 · ${Math.round(s.tt/200)}%</b></div><div class="f"><i style="width:${Math.min(100,s.tt/200)}%"></i></div></div>
