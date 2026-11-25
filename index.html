@@ -299,12 +299,6 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
     <div class="note" id="note" role="status"></div>
   </div>
   <div class="remind"><button class="bell" id="bell" type="button">תלחץ עליי דחוף</button><div class="note" id="bellNote" role="status"></div></div>
-  <div class="bets" id="bets">
-    <h2>מי ייפול ראשון? <small id="betState">ההימורים פתוחים</small></h2>
-    <div class="betrow"><select id="betPick" aria-label="על מי את/ה מהמר/ת"></select><button type="button" id="betGo">הימרתי</button></div>
-    <div class="note" id="betNote" role="status"></div>
-    <ol class="betboard" id="betBoard"></ol>
-  </div>
   <nav class="jumps"><a class="jump" href="#progress"><span>לטבלה ולהתקדמות של כולם</span><b aria-hidden="true">↓</b></a><a class="jump" href="#chat"><span>לצ'אט של האתגר</span><b aria-hidden="true">↓</b></a></nav>
 </div></section>
 
@@ -429,7 +423,7 @@ function timeTitles(){
 function renderKings(){const y=todayIdx()-1;const ks=players.filter(isKing).sort((a,b)=>val(b,y).t-val(a,y).t);
   $('kings').innerHTML=ks.length?ks.map(p=>`<div class="k">👑 ${av(p)}${esc(p.name)} <small style="font:500 13px Heebo;opacity:.8">${val(p,y).t}</small></div>`).join(''):'<small>אף אחד. עוד.</small>'}
 function betsClosed(){return players.some(p=>statusOf(p).out)}
-function renderBets(){
+function renderBets(){if(!$('bets'))return;
   const closed=betsClosed(),firstOut=closed?players.map(p=>({p,st:statusOf(p)})).filter(x=>x.st.out).sort((a,b)=>a.st.missed[1]-b.st.missed[1])[0].p:null;
   $('betState').textContent=closed?`נסגר: ${firstOut.name} נפל/ה ראשון/ה`:'ההימורים פתוחים עד שמישהו נופל';
   const tally={};for(const t of Object.values(bets))tally[t]=(tally[t]||0)+1;
@@ -442,13 +436,6 @@ function renderBets(){
   if(document.activeElement!==pick)pick.innerHTML='<option value="">על מי את/ה מהמר/ת?</option>'+players.map(p=>`<option value="${esc(p.id)}"${p.id===cur?' selected':''}>${esc(p.name)}</option>`).join('');
   pick.disabled=$('betGo').disabled=closed;
 }
-$('betGo').addEventListener('click',async()=>{const n=$('betNote'),t=$('betPick').value;
-  if(!me){n.textContent='קודם תתעד/י פעם אחת עם השם שלך, ואז אפשר להמר.';return}
-  if(!t){n.textContent='בחר/י על מי.';return}
-  const pin=pins[me];if(!pin){n.textContent='חסר הקוד האישי שלך. תתעד/י פעם אחת ואז תהמר/י.';return}
-  try{await api('/api/bet',{id:me,pin,target:t});bets[me]=t;renderBets();
-    const p=players.find(x=>x.id===t);n.textContent=t===me?'הימרת על עצמך. אומץ או ייאוש?':`נרשם: את/ה בטוח/ה ש${p.name} ייפול/תיפול ראשון/ה.`}
-  catch(e){n.textContent=e.msg==='closed'?'ההימורים כבר נסגרו.':e.status===403?'הקוד לא נכון.':'ההימור לא נשמר, נסה/י שוב.'}});
 function confetti(){const c=$('confetti');const cols=['#e3362a','#ffe14d','#141414','#ffffff','#5cc8ff'];
   c.innerHTML=Array.from({length:90},(_,i)=>`<i style="left:${Math.random()*100}%;background:${cols[i%5]};animation-delay:${Math.random()*.8}s;animation-duration:${2+Math.random()*1.5}s"></i>`).join('');
   c.hidden=false;setTimeout(()=>{c.hidden=true;c.innerHTML=''},3800)}
