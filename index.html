@@ -2,11 +2,12 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>אתגר 100 ימים</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="אתגר 100">
 <meta name="theme-color" content="#e3362a">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -108,7 +109,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--red);outline-of
 .pc.warned{box-shadow:inset 0 0 0 3px light-dark(#f2c230,#b38900)}
 .pc.out::after{content:"";position:absolute;inset:0;border-radius:18px;pointer-events:none;opacity:.9;
  background:linear-gradient(to top right,transparent calc(50% - 5px),var(--red) calc(50% - 5px),var(--red) calc(50% + 5px),transparent calc(50% + 5px)),linear-gradient(to top left,transparent calc(50% - 5px),var(--red) calc(50% - 5px),var(--red) calc(50% + 5px),transparent calc(50% + 5px))}
-.hero{padding-block:clamp(22px,3vw,44px)}
+.hero{padding-block:clamp(22px,3vw,44px);padding-top:calc(clamp(22px,3vw,44px) + env(safe-area-inset-top,0px));padding-inline:max(5vw,16px,env(safe-area-inset-left,0px))}
 .hero .score{margin-top:18px}
 .logband{padding-top:clamp(20px,3vw,40px)}
 .wholbl{display:block;font-weight:700;margin-bottom:6px}
